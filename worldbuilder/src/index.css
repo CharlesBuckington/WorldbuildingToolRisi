@@ -1,3 +1,4 @@
+/* src/index.css */
 * {
   box-sizing: border-box;
 }
@@ -13,6 +14,10 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
 }
 
 .app {
@@ -32,7 +37,7 @@ a {
 
 .topbar nav {
   display: flex;
-  gap: 1rem;
+  align-items: center;
 }
 
 .topbar a {
@@ -42,6 +47,7 @@ a {
 
 .topbar a:hover {
   background: #374151;
+  text-decoration: none;
 }
 
 .main {
@@ -49,6 +55,13 @@ a {
 }
 
 .page {
-  max-width: 1000px;
+  max-width: 1100px;
   margin: 0 auto;
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
 }

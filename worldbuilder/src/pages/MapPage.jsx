@@ -1,87 +1,146 @@
-import { useState, useRef } from "react";
+// src/pages/MapPage.jsx
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useWorld } from "../store/worldStore.jsx";
+import ImageMap from "../components/ImageMap.jsx";
 
 function MapPage() {
-  const [mapImage, setMapImage] = useState(null);      // data URL
-  const [markers, setMarkers] = useState([]);          // { x, y } in relative coords
-  const mapContainerRef = useRef(null);
+  const { mapId } = useParams();
+  const {
+    maps,
+    markers,
+    sites,
+    loading,
+    createSite,
+    createMarker,
+    updateMarker,
+    updateMap,
+  } = useWorld();
+  const navigate = useNavigate();
 
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+  const mapsArray = useMemo(() => Object.values(maps), [maps]);
+  let effectiveMapId = mapId;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setMapImage(e.target.result);
-      setMarkers([]); // reset markers when new map is loaded
+  if (!effectiveMapId && mapsArray.length > 0) {
+    effectiveMapId = mapsArray[0].id;
+  }
+
+  const map = effectiveMapId ? maps[effectiveMapId] : null;
+
+  const [dimensions, setDimensions] = useState(
+    map && map.width && map.height
+      ? { width: map.width, height: map.height }
+      : null
+  );
+
+  // Load image dimensions if not already known
+  useEffect(() => {
+    if (!map) return;
+
+    if (map.width && map.height) {
+      setDimensions({ width: map.width, height: map.height });
+      return;
+    }
+
+    const imageUrl = `/Img/${map.imageFilename}`;
+    const img = new Image();
+    img.onload = () => {
+      const width = img.naturalWidth;
+      const height = img.naturalHeight;
+      setDimensions({ width, height });
+      // Cache in Firestore
+      updateMap(map.id, { width, height }).catch((err) =>
+        console.error("Failed to update map dimensions:", err)
+      );
     };
-    reader.readAsDataURL(file);
+    img.onerror = () => {
+      console.error("Failed to load map image:", imageUrl);
+    };
+    img.src = imageUrl;
+  }, [map, updateMap]);
+
+  if (loading && !map) {
+    return (
+      <div className="page">
+        <p>Loading world from Firebase…</p>
+      </div>
+    );
+  }
+
+  if (!map) {
+    return (
+      <div className="page">
+        <h2>Maps</h2>
+        {mapsArray.length === 0 ? (
+          <p>No maps yet. Go to Home and create one.</p>
+        ) : (
+          <p>Unknown map. Select from Home page.</p>
+        )}
+      </div>
+    );
+  }
+
+  const imageUrl = `/Img/${map.imageFilename}`;
+  const mapMarkers = Object.values(markers).filter(
+    (m) => m.mapId === map.id
+  );
+
+  const handleMarkerClick = async (marker) => {
+    if (marker.siteId && sites[marker.siteId]) {
+      navigate(`/site/${marker.siteId}`);
+      return;
+    }
+
+    const title = window.prompt(
+      "Create site for this marker. Site title:",
+      "New Site"
+    );
+    const site = await createSite({ title: title || "New Site" });
+    await updateMarker(marker.id, {
+      siteId: site.id,
+      label: site.title,
+    });
+    navigate(`/site/${site.id}`);
   };
 
-  const handleMapClick = (event) => {
-    if (!mapContainerRef.current || !mapImage) return;
-
-    const rect = mapContainerRef.current.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / rect.width;
-    const y = (event.clientY - rect.top) / rect.height;
-
-    setMarkers((prev) => [...prev, { x, y }]);
+  const handleAddMarker = async ({ x, y }) => {
+    const title = window.prompt(
+      "New marker: give it a site name (this will also create the site). Leave empty for 'New Site'.",
+      ""
+    );
+    const site = await createSite({ title: title || "New Site" });
+    await createMarker({
+      mapId: map.id,
+      x,
+      y,
+      label: site.title,
+      siteId: site.id,
+    });
+    navigate(`/site/${site.id}`);
   };
 
   return (
     <div className="page">
-      <h2>Map</h2>
+      <h2>{map.name}</h2>
+      <p style={{ marginBottom: "0.5rem", opacity: 0.8 }}>
+        Image file: <code>{map.imageFilename}</code>
+      </p>
+      <p style={{ marginBottom: "0.5rem", opacity: 0.8 }}>
+        Click on the map to create a new location (Site + Marker). Click on an
+        existing marker to open its Site.
+      </p>
 
-      <section style={{ marginBottom: "1rem" }}>
-        <label>
-          <strong>Import map image (PNG/JPG):</strong>
-          <input
-            type="file"
-            accept="image/png,image/jpeg"
-            onChange={handleFileChange}
-            style={{ display: "block", marginTop: "0.5rem" }}
-          />
-        </label>
-      </section>
+      {!dimensions && <p>Loading map image and dimensions…</p>}
 
-      {!mapImage && <p>No map loaded yet. Choose an image above.</p>}
-
-      {mapImage && (
-        <div
-          ref={mapContainerRef}
-          style={{
-            position: "relative",
-            maxWidth: "100%",
-            border: "1px solid #4b5563",
-            overflow: "hidden",
-            cursor: "crosshair",
-          }}
-          onClick={handleMapClick}
-        >
-          <img
-            src={mapImage}
-            alt="World map"
-            style={{ width: "100%", display: "block" }}
-          />
-
-          {markers.map((marker, index) => (
-            <div
-              key={index}
-              style={{
-                position: "absolute",
-                left: `${marker.x * 100}%`,
-                top: `${marker.y * 100}%`,
-                transform: "translate(-50%, -100%)",
-                background: "#f97316",
-                borderRadius: "999px",
-                padding: "2px 6px",
-                fontSize: "0.75rem",
-                pointerEvents: "none",
-              }}
-            >
-              ●
-            </div>
-          ))}
-        </div>
+      {dimensions && (
+        <ImageMap
+          imageUrl={imageUrl}
+          width={dimensions.width}
+          height={dimensions.height}
+          markers={mapMarkers}
+          onMarkerClick={handleMarkerClick}
+          onAddMarker={handleAddMarker}
+        />
       )}
     </div>
   );
