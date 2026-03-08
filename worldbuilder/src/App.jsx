@@ -1,22 +1,18 @@
 // src/App.jsx
 import { Routes, Route, Link } from "react-router-dom";
 import HomePage from "./pages/HomePage.jsx";
-import MapPage from "./pages/MapPage.jsx";
-import SitePage from "./pages/SitePage.jsx";
-import { useWorld } from "./store/worldStore.jsx";
+import EntryPage from "./pages/EntryPage.jsx";
+import { useWiki } from "./store/wikiStore.jsx";
 
 function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <h1>World Builder</h1>
+        <h1>Campaign Wiki</h1>
         <nav>
           <Link to="/">Home</Link>
-          <Link to="/map" style={{ marginLeft: "1rem" }}>
-            Maps
-          </Link>
-          <Link to="/sites" style={{ marginLeft: "1rem" }}>
-            Sites
+          <Link to="/entries" style={{ marginLeft: "1rem" }}>
+            Entries
           </Link>
         </nav>
       </header>
@@ -24,31 +20,28 @@ function App() {
       <main className="main">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/map" element={<MapPage />} />
-          <Route path="/map/:mapId" element={<MapPage />} />
-          <Route path="/site/:siteId" element={<SitePage />} />
-          <Route path="/sites" element={<SitePageListWrapper />} />
+          <Route path="/entries" element={<EntryListPage />} />
+          <Route path="/entry/:entryId" element={<EntryPage />} />
         </Routes>
       </main>
     </div>
   );
 }
 
-// List of all sites
-function SitePageListWrapper() {
-  const { sites } = useWorld();
-  const sitesArray = Object.values(sites);
+function EntryListPage() {
+  const { entries } = useWiki();
+  const entriesArray = Object.values(entries);
 
   return (
     <div className="page">
-      <h2>All Sites</h2>
-      {sitesArray.length === 0 && <p>No sites yet.</p>}
-      {sitesArray.length > 0 && (
+      <h2>All Entries</h2>
+      {entriesArray.length === 0 && <p>No entries yet.</p>}
+      {entriesArray.length > 0 && (
         <ul>
-          {sitesArray.map((site) => (
-            <li key={site.id}>
-              <Link to={`/site/${site.id}`}>{site.title}</Link>{" "}
-              <span style={{ opacity: 0.6 }}>({site.type})</span>
+          {entriesArray.map((entry) => (
+            <li key={entry.id}>
+              <Link to={`/entry/${entry.id}`}>{entry.title}</Link>{" "}
+              <span style={{ opacity: 0.6 }}>({entry.type})</span>
             </li>
           ))}
         </ul>

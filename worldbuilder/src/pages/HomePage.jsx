@@ -1,45 +1,27 @@
 // src/pages/HomePage.jsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useWorld } from "../store/worldStore.jsx";
+import { useWiki } from "../store/wikiStore.jsx";
 
 function HomePage() {
-  const { maps, markers, sites, createMap } = useWorld();
-  const [mapName, setMapName] = useState("");
-  const [imageFilename, setImageFilename] = useState("");
+  const { entries, createEntry } = useWiki();
+  const [title, setTitle] = useState("");
+  const [type, setType] = useState("location");
   const navigate = useNavigate();
 
-  const mapsArray = Object.values(maps);
-  const sitesArray = Object.values(sites);
+  const entriesArray = Object.values(entries);
 
-  const handleCreateMap = async () => {
-    const name = mapName.trim();
-    const filename = imageFilename.trim();
+  const handleCreateEntry = async () => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
 
-    if (!name) {
-      alert("Please enter a map name.");
-      return;
-    }
-    if (!filename) {
-      alert(
-        'Please enter an image filename (e.g. "Worldmap.png") that you have placed into public/Img.'
-      );
-      return;
-    }
+    const entry = await createEntry({
+      title: trimmed,
+      type,
+    });
 
-    try {
-      const newMap = await createMap({
-        name,
-        imageFilename: filename,
-      });
-
-      setMapName("");
-      setImageFilename("");
-      navigate(`/map/${newMap.id}`);
-    } catch (err) {
-      console.error("Failed to create map:", err);
-      alert("Could not create map. Check console for details.");
-    }
+    setTitle("");
+    navigate(`/entry/${entry.id}`);
   };
 
   return (
@@ -47,69 +29,40 @@ function HomePage() {
       <h2>Dashboard</h2>
 
       <section style={{ marginBottom: "2rem" }}>
-        <h3>Create New Map</h3>
-        <p style={{ fontSize: "0.9rem", opacity: 0.8 }}>
-          Put your map images into <code>public/Img</code>, then reference them
-          here by filename (e.g. <code>Worldmap.png</code>).
-        </p>
+        <h3>Create Entry</h3>
 
-        <div style={{ marginBottom: "0.5rem" }}>
-          <label>
-            Map name:
-            <input
-              type="text"
-              value={mapName}
-              onChange={(e) => setMapName(e.target.value)}
-              placeholder="Overworld, City, Dungeon…"
-              style={{ display: "block", width: "100%", marginTop: "0.25rem" }}
-            />
-          </label>
-        </div>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Neverwinter, Goblin Camp, Lord Harbin..."
+          style={{ display: "block", width: "100%", marginBottom: "0.5rem" }}
+        />
 
-        <div style={{ marginBottom: "0.5rem" }}>
-          <label>
-            Image filename:
-            <input
-              type="text"
-              value={imageFilename}
-              onChange={(e) => setImageFilename(e.target.value)}
-              placeholder="Worldmap.png"
-              style={{ display: "block", width: "100%", marginTop: "0.25rem" }}
-            />
-          </label>
-        </div>
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          style={{ display: "block", width: "100%", marginBottom: "0.5rem" }}
+        >
+          <option value="location">Location</option>
+          <option value="npc">NPC</option>
+          <option value="faction">Faction</option>
+          <option value="quest">Quest</option>
+          <option value="note">Note</option>
+        </select>
 
-        <button onClick={handleCreateMap}>Create Map</button>
-      </section>
-
-      <section style={{ marginBottom: "2rem" }}>
-        <h3>Maps</h3>
-        {mapsArray.length === 0 && <p>No maps yet. Create one above.</p>}
-        {mapsArray.length > 0 && (
-          <ul>
-            {mapsArray.map((map) => (
-              <li key={map.id}>
-                <Link to={`/map/${map.id}`}>{map.name}</Link>{" "}
-                <span style={{ opacity: 0.6 }}>
-                  (<code>{map.imageFilename}</code>)
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <button onClick={handleCreateEntry}>Create Entry</button>
       </section>
 
       <section>
-        <h3>Sites</h3>
-        {sitesArray.length === 0 && (
-          <p>No sites yet. Create some via the map or Sites page.</p>
-        )}
-        {sitesArray.length > 0 && (
+        <h3>Recent Entries</h3>
+        {entriesArray.length === 0 && <p>No entries yet.</p>}
+        {entriesArray.length > 0 && (
           <ul>
-            {sitesArray.map((site) => (
-              <li key={site.id}>
-                <Link to={`/site/${site.id}`}>{site.title}</Link>{" "}
-                <span style={{ opacity: 0.6 }}>({site.type})</span>
+            {entriesArray.map((entry) => (
+              <li key={entry.id}>
+                <Link to={`/entry/${entry.id}`}>{entry.title}</Link>{" "}
+                <span style={{ opacity: 0.6 }}>({entry.type})</span>
               </li>
             ))}
           </ul>
