@@ -50,10 +50,10 @@ function getIconForMarker(marker) {
   return iconCache[key];
 }
 
-function MapClickHandler({ imageWidth, imageHeight, onMapClick }) {
+function MapClickHandler({ imageWidth, imageHeight, onMapClick, enabled }) {
   useMapEvents({
     click(e) {
-      if (!onMapClick) return;
+      if (!enabled || !onMapClick) return;
 
       const { lat, lng } = e.latlng;
       const xRel = lng / imageWidth;
@@ -74,7 +74,7 @@ function MapClickHandler({ imageWidth, imageHeight, onMapClick }) {
     },
 
     contextmenu(e) {
-      if (!onMapClick) return;
+      if (!enabled || !onMapClick) return;
 
       const { lat, lng } = e.latlng;
       const xRel = lng / imageWidth;
@@ -98,7 +98,7 @@ function MapClickHandler({ imageWidth, imageHeight, onMapClick }) {
   return null;
 }
 
-function MapBlock({ block, markers, onDelete }) {
+function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMoveUp, onMoveDown }) {
   const navigate = useNavigate();
   const {
     entries,
@@ -133,6 +133,8 @@ function MapBlock({ block, markers, onDelete }) {
   }, [block.id, block.imageFilename, block.width, block.height, updateBlock]);
 
   const handleMapClick = ({ x, y, screenX, screenY }) => {
+    if (mode !== "edit") return;
+
     setEditingMarker(null);
     setPendingMarker({
       x,
@@ -147,6 +149,13 @@ function MapBlock({ block, markers, onDelete }) {
   };
 
   const handleMarkerClick = (marker, event) => {
+    if (mode === "view") {
+      if (marker.entryId) {
+        navigate(`/entry/${marker.entryId}`);
+      }
+      return;
+    }
+
     const originalEvent = event?.originalEvent;
     const screenX = originalEvent?.clientX ?? window.innerWidth / 2;
     const screenY = originalEvent?.clientY ?? window.innerHeight / 2;
@@ -192,7 +201,7 @@ function MapBlock({ block, markers, onDelete }) {
   const handleSaveEditedMarker = async () => {
     if (!editingMarker) return;
 
-    let entryId = editingMarker.targetEntryId || null;
+    const entryId = editingMarker.targetEntryId || null;
     let label = editingMarker.label.trim() || "Marker";
 
     if (entryId && entries[entryId] && !editingMarker.label.trim()) {
@@ -220,57 +229,31 @@ function MapBlock({ block, markers, onDelete }) {
   };
 
   const renderMarkerMenu = (menuState, isEditing) => {
-    if (!menuState) return null;
+    if (!menuState || mode !== "edit") return null;
 
     return (
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 999,
-          background: "transparent",
-        }}
-        onClick={() => {
-          if (isEditing) {
-            setEditingMarker(null);
-          } else {
-            setPendingMarker(null);
-          }
-        }}
-      >
+      <div className="marker-menu-backdrop" onClick={() => {
+        if (isEditing) {
+          setEditingMarker(null);
+        } else {
+          setPendingMarker(null);
+        }
+      }}>
         <div
+          className="marker-menu"
           style={{
-            position: "fixed",
             top: menuState.screenY,
             left: menuState.screenX,
-            transform: "translate(8px, 8px)",
-            background: "#111827",
-            color: "#F9FAFB",
-            padding: "0.75rem 0.9rem",
-            borderRadius: "0.5rem",
-            boxShadow: "0 10px 25px rgba(0,0,0,0.45)",
-            minWidth: "270px",
-            zIndex: 1000,
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div style={{ marginBottom: "0.5rem", fontWeight: 600 }}>
+          <div className="marker-menu__title">
             {isEditing ? "Edit Marker" : "Create Marker"}
           </div>
 
-          <label
-            style={{
-              display: "block",
-              marginBottom: "0.25rem",
-              fontSize: "0.75rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              opacity: 0.8,
-            }}
-          >
-            Label
-          </label>
+          <label className="field-label">Label</label>
           <input
+            className="fantasy-input"
             type="text"
             value={menuState.label}
             onChange={(e) => {
@@ -282,30 +265,11 @@ function MapBlock({ block, markers, onDelete }) {
               }
             }}
             placeholder="Marker label"
-            style={{
-              width: "100%",
-              marginBottom: "0.5rem",
-              padding: "0.35rem 0.45rem",
-              borderRadius: "0.25rem",
-              border: "1px solid #374151",
-              background: "#020617",
-              color: "#F9FAFB",
-            }}
           />
 
-          <label
-            style={{
-              display: "block",
-              marginBottom: "0.25rem",
-              fontSize: "0.75rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              opacity: 0.8,
-            }}
-          >
-            Icon
-          </label>
+          <label className="field-label">Icon</label>
           <select
+            className="fantasy-input"
             value={menuState.iconKey}
             onChange={(e) => {
               const value = e.target.value;
@@ -314,15 +278,6 @@ function MapBlock({ block, markers, onDelete }) {
               } else {
                 setPendingMarker((prev) => ({ ...prev, iconKey: value }));
               }
-            }}
-            style={{
-              width: "100%",
-              marginBottom: "0.5rem",
-              padding: "0.35rem 0.45rem",
-              borderRadius: "0.25rem",
-              border: "1px solid #374151",
-              background: "#020617",
-              color: "#F9FAFB",
             }}
           >
             {ICON_OPTIONS.map((icon) => (
@@ -333,7 +288,7 @@ function MapBlock({ block, markers, onDelete }) {
           </select>
 
           {!isEditing && (
-            <label style={{ display: "block", marginBottom: "0.5rem" }}>
+            <label className="checkbox-row">
               <input
                 type="checkbox"
                 checked={menuState.createNewEntry}
@@ -344,7 +299,6 @@ function MapBlock({ block, markers, onDelete }) {
                     targetEntryId: "",
                   }))
                 }
-                style={{ marginRight: "0.5rem" }}
               />
               Create new linked entry
             </label>
@@ -352,19 +306,9 @@ function MapBlock({ block, markers, onDelete }) {
 
           {(!menuState.createNewEntry || isEditing) && (
             <>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "0.25rem",
-                  fontSize: "0.75rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                  opacity: 0.8,
-                }}
-              >
-                Linked Entry
-              </label>
+              <label className="field-label">Linked Entry</label>
               <select
+                className="fantasy-input"
                 value={menuState.targetEntryId || ""}
                 onChange={(e) => {
                   const value = e.target.value;
@@ -380,15 +324,6 @@ function MapBlock({ block, markers, onDelete }) {
                     }));
                   }
                 }}
-                style={{
-                  width: "100%",
-                  marginBottom: "0.75rem",
-                  padding: "0.35rem 0.45rem",
-                  borderRadius: "0.25rem",
-                  border: "1px solid #374151",
-                  background: "#020617",
-                  color: "#F9FAFB",
-                }}
               >
                 <option value="">No linked entry</option>
                 {entriesArray.map((entry) => (
@@ -400,27 +335,21 @@ function MapBlock({ block, markers, onDelete }) {
             </>
           )}
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "0.5rem",
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="block-actions">
             {isEditing && editingMarker?.entryId && (
-              <button type="button" onClick={handleOpenLinkedEntry}>
+              <button className="fantasy-button secondary" type="button" onClick={handleOpenLinkedEntry}>
                 Open Entry
               </button>
             )}
 
             {isEditing && (
-              <button type="button" onClick={handleDeleteEditedMarker}>
+              <button className="fantasy-button danger" type="button" onClick={handleDeleteEditedMarker}>
                 Delete
               </button>
             )}
 
             <button
+              className="fantasy-button secondary"
               type="button"
               onClick={() => {
                 if (isEditing) {
@@ -434,6 +363,7 @@ function MapBlock({ block, markers, onDelete }) {
             </button>
 
             <button
+              className="fantasy-button"
               type="button"
               onClick={isEditing ? handleSaveEditedMarker : handleConfirmNewMarker}
             >
@@ -454,78 +384,113 @@ function MapBlock({ block, markers, onDelete }) {
     : null;
 
   return (
-    <div className="card">
-      <input
-        value={block.imageFilename || ""}
-        onChange={(e) => updateBlock(block.id, { imageFilename: e.target.value })}
-        placeholder="Map image filename in public/Img"
-        style={{ width: "100%", marginBottom: "0.5rem" }}
-      />
+    <section className="content-block map-block">
+      {mode === "edit" && (
+        <div className="block-edit-fields">
+          <label className="field-label">Map image filename</label>
+          <input
+            className="fantasy-input"
+            value={block.imageFilename || ""}
+            onChange={(e) => updateBlock(block.id, { imageFilename: e.target.value })}
+            placeholder="Map image filename in public/Img"
+          />
 
-      <input
-        value={block.caption || ""}
-        onChange={(e) => updateBlock(block.id, { caption: e.target.value })}
-        placeholder="Caption"
-        style={{ width: "100%", marginBottom: "0.75rem" }}
-      />
+          <label className="field-label">Caption</label>
+          <input
+            className="fantasy-input"
+            value={block.caption || ""}
+            onChange={(e) => updateBlock(block.id, { caption: e.target.value })}
+            placeholder="Caption"
+          />
+        </div>
+      )}
 
-      {!block.imageFilename && (
-        <p style={{ opacity: 0.7 }}>
+      {!block.imageFilename && mode === "edit" && (
+        <p className="block-placeholder">
           Enter an image filename to use this as a map block.
         </p>
       )}
 
       {block.imageFilename && !hasValidImage && (
-        <p style={{ opacity: 0.7 }}>Loading map image and dimensions…</p>
+        <p className="block-placeholder">Loading map image and dimensions…</p>
       )}
 
       {hasValidImage && (
-        <MapContainer
-          crs={L.CRS.Simple}
-          bounds={bounds}
-          style={{ width: "100%", height: "70vh", background: "#000" }}
-          minZoom={-2}
-          maxZoom={4}
-        >
-          <ImageOverlay url={`/Img/${block.imageFilename}`} bounds={bounds} />
+        <>
+          <div className="map-block__frame">
+            <MapContainer
+              crs={L.CRS.Simple}
+              bounds={bounds}
+              style={{ width: "100%", height: "70vh", background: "#1a1712" }}
+              minZoom={-2}
+              maxZoom={4}
+            >
+              <ImageOverlay url={`/Img/${block.imageFilename}`} bounds={bounds} />
 
-          <MapClickHandler
-            imageWidth={block.width}
-            imageHeight={block.height}
-            onMapClick={handleMapClick}
-          />
+              <MapClickHandler
+                imageWidth={block.width}
+                imageHeight={block.height}
+                onMapClick={handleMapClick}
+                enabled={mode === "edit"}
+              />
 
-          {markers.map((marker) => {
-            const x = marker.x * block.width;
-            const y = marker.y * block.height;
-            const position = [y, x];
+              {markers.map((marker) => {
+                const x = marker.x * block.width;
+                const y = marker.y * block.height;
+                const position = [y, x];
 
-            return (
-              <Marker
-                key={marker.id}
-                position={position}
-                icon={getIconForMarker(marker)}
-                eventHandlers={{
-                  click: (e) => handleMarkerClick(marker, e),
-                  contextmenu: (e) => handleMarkerClick(marker, e),
-                }}
-              >
-                <Tooltip direction="top" offset={[0, -10]} opacity={0.9}>
-                  {marker.label || "Unnamed"}
-                </Tooltip>
-              </Marker>
-            );
-          })}
-        </MapContainer>
+                return (
+                  <Marker
+                    key={marker.id}
+                    position={position}
+                    icon={getIconForMarker(marker)}
+                    eventHandlers={{
+                      click: (e) => handleMarkerClick(marker, e),
+                      contextmenu: (e) => handleMarkerClick(marker, e),
+                    }}
+                  >
+                    <Tooltip direction="top" offset={[0, -10]} opacity={0.9}>
+                      {marker.label || "Unnamed"}
+                    </Tooltip>
+                  </Marker>
+                );
+              })}
+            </MapContainer>
+          </div>
+
+          {block.caption && <p className="image-block__caption">{block.caption}</p>}
+        </>
       )}
 
-      <div style={{ marginTop: "0.75rem" }}>
-        <button onClick={onDelete}>Delete Map Block</button>
-      </div>
+      {mode === "edit" && (
+        <div className="block-actions">
+          <button
+            className="fantasy-button secondary"
+            type="button"
+            onClick={onMoveUp}
+            disabled={!canMoveUp}
+          >
+            ↑ Move Up
+          </button>
+
+          <button
+            className="fantasy-button secondary"
+            type="button"
+            onClick={onMoveDown}
+            disabled={!canMoveDown}
+          >
+            ↓ Move Down
+          </button>
+
+          <button className="fantasy-button danger" onClick={onDelete}>
+            Delete Map Block
+          </button>
+        </div>
+      )}
 
       {renderMarkerMenu(pendingMarker, false)}
       {renderMarkerMenu(editingMarker, true)}
-    </div>
+    </section>
   );
 }
 

@@ -163,6 +163,34 @@ export function WikiProvider({ children }) {
     await deleteDoc(doc(db, "markers", markerId));
   };
 
+  const moveBlock = async (entryId, blockId, direction) => {
+    const entryBlocks = Object.values(blocks)
+      .filter((block) => block.entryId === entryId)
+      .sort((a, b) => a.order - b.order);
+
+    const currentIndex = entryBlocks.findIndex((block) => block.id === blockId);
+    if (currentIndex === -1) return;
+
+    const targetIndex =
+      direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+    if (targetIndex < 0 || targetIndex >= entryBlocks.length) return;
+
+    const currentBlock = entryBlocks[currentIndex];
+    const targetBlock = entryBlocks[targetIndex];
+
+    await Promise.all([
+      updateDoc(doc(db, "blocks", currentBlock.id), {
+        order: targetBlock.order,
+        updatedAt: serverTimestamp(),
+      }),
+      updateDoc(doc(db, "blocks", targetBlock.id), {
+        order: currentBlock.order,
+        updatedAt: serverTimestamp(),
+      }),
+    ]);
+  };
+
   const value = useMemo(
     () => ({
       entries,
@@ -178,10 +206,13 @@ export function WikiProvider({ children }) {
       createMarker,
       updateMarker,
       deleteMarker,
+      moveBlock
     }),
     [entries, blocks, markers, loading]
   );
 
+
+  
   return <WikiContext.Provider value={value}>{children}</WikiContext.Provider>;
 }
 

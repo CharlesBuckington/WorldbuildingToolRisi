@@ -1,5 +1,5 @@
 // src/pages/EntryPage.jsx
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useWiki } from "../store/wikiStore.jsx";
 import TextBlock from "../components/TextBlock.jsx";
@@ -17,9 +17,12 @@ function EntryPage() {
     deleteEntry,
     createBlock,
     deleteBlock,
+    moveBlock
   } = useWiki();
 
+  const [mode, setMode] = useState("view");
   const entry = entries[entryId];
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const entryBlocks = useMemo(() => {
     return Object.values(blocks)
@@ -73,37 +76,121 @@ function EntryPage() {
     navigate("/");
   };
 
-  return (
-    <div className="page">
-      <input
-        value={entry.title}
-        onChange={(e) => updateEntry(entryId, { title: e.target.value })}
-        style={{ width: "100%", fontSize: "1.5rem", marginBottom: "0.75rem" }}
-      />
+return (
+  <div className={`page entry-layout entry-layout--${mode}`}>
+    {mode === "edit" && (
+      <aside className={`entry-sidebar ${isSidebarOpen ? "is-open" : "is-collapsed"}`}>
+        <div className="entry-sidebar__section">
+          <button
+            className="fantasy-button secondary sidebar-full"
+            type="button"
+            onClick={() => setIsSidebarOpen((prev) => !prev)}
+          >
+            {isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+          </button>
+        </div>
 
-      <select
-        value={entry.type}
-        onChange={(e) => updateEntry(entryId, { type: e.target.value })}
-        style={{ marginBottom: "1rem" }}
-      >
-        <option value="location">Location</option>
-        <option value="npc">NPC</option>
-        <option value="faction">Faction</option>
-        <option value="quest">Quest</option>
-        <option value="note">Note</option>
-      </select>
+        {isSidebarOpen && (
+          <>
+            <div className="entry-sidebar__section">
+              <h3 className="entry-sidebar__title">Editor</h3>
 
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-        <button onClick={handleAddTextBlock}>+ Text</button>
-        <button onClick={handleAddImageBlock}>+ Image</button>
-        <button onClick={handleAddMapBlock}>+ Map</button>
-        <button onClick={handleDeleteEntry}>Delete Entry</button>
+              <button
+                className="fantasy-button secondary sidebar-full"
+                type="button"
+                onClick={() => setMode("view")}
+              >
+                Switch to View Mode
+              </button>
+            </div>
+
+            <div className="entry-sidebar__section">
+              <h3 className="entry-sidebar__title">Entry</h3>
+
+              <button className="fantasy-button sidebar-full" onClick={handleAddTextBlock}>
+                + Add Text
+              </button>
+              <button className="fantasy-button sidebar-full" onClick={handleAddImageBlock}>
+                + Add Image
+              </button>
+              <button className="fantasy-button sidebar-full" onClick={handleAddMapBlock}>
+                + Add Map
+              </button>
+            </div>
+
+            <div className="entry-sidebar__section">
+              <h3 className="entry-sidebar__title">Danger Zone</h3>
+              <button className="fantasy-button danger sidebar-full" type="button" onClick={handleDeleteEntry}>
+                Delete Entry
+              </button>
+            </div>
+          </>
+        )}
+      </aside>
+    )}
+
+    <div className="entry-main">
+      <div className="entry-header">
+        <div className="entry-header__main">
+          {mode === "edit" ? (
+            <>
+              <label className="field-label">Title</label>
+              <input
+                className="fantasy-input fantasy-input--title"
+                value={entry.title}
+                onChange={(e) => updateEntry(entryId, { title: e.target.value })}
+              />
+
+              <label className="field-label">Type</label>
+              <select
+                className="fantasy-input"
+                value={entry.type}
+                onChange={(e) => updateEntry(entryId, { type: e.target.value })}
+              >
+                <option value="location">Location</option>
+                <option value="npc">NPC</option>
+                <option value="faction">Faction</option>
+                <option value="quest">Quest</option>
+                <option value="note">Note</option>
+              </select>
+            </>
+          ) : (
+            <>
+              <div className="entry-view-topbar">
+                <div>
+                  <h1 className="entry-title">{entry.title}</h1>
+                  <p className="entry-type">{entry.type}</p>
+                </div>
+
+                <button
+                  className="fantasy-button"
+                  type="button"
+                  onClick={() => setMode("edit")}
+                >
+                  Edit Entry
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      <div style={{ display: "grid", gap: "1rem" }}>
-        {entryBlocks.map((block) => {
+      <div className="entry-content">
+        {entryBlocks.map((block, index) => {
+          const canMoveUp = index > 0;
+          const canMoveDown = index < entryBlocks.length - 1;
           if (block.type === "text") {
-            return <TextBlock key={block.id} block={block} />;
+            return (
+              <TextBlock
+                key={block.id}
+                block={block}
+                mode={mode}
+                canMoveUp={canMoveUp}
+                canMoveDown={canMoveDown}
+                onMoveUp={() => moveBlock(entryId, block.id, "up")}
+                onMoveDown={() => moveBlock(entryId, block.id, "down")}
+              />
+            )
           }
 
           if (block.type === "image") {
@@ -111,7 +198,12 @@ function EntryPage() {
               <ImageBlock
                 key={block.id}
                 block={block}
+                mode={mode}
                 onDelete={() => deleteBlock(block.id)}
+                canMoveUp={canMoveUp}
+                canMoveDown={canMoveDown}
+                onMoveUp={() => moveBlock(entryId, block.id, "up")}
+                onMoveDown={() => moveBlock(entryId, block.id, "down")}
               />
             );
           }
@@ -125,8 +217,13 @@ function EntryPage() {
               <MapBlock
                 key={block.id}
                 block={block}
+                mode={mode}
                 markers={blockMarkers}
                 onDelete={() => deleteBlock(block.id)}
+                canMoveUp={canMoveUp}
+                canMoveDown={canMoveDown}
+                onMoveUp={() => moveBlock(entryId, block.id, "up")}
+                onMoveDown={() => moveBlock(entryId, block.id, "down")}
               />
             );
           }
@@ -135,7 +232,8 @@ function EntryPage() {
         })}
       </div>
     </div>
-  );
+  </div>
+);
 }
 
 export default EntryPage;

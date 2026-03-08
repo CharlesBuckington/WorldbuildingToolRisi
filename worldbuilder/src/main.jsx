@@ -5,7 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
 import { WikiProvider } from "./store/wikiStore.jsx";
 import "leaflet/dist/leaflet.css";
-import "./index.css";
+import "./styles/entry-theme.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
