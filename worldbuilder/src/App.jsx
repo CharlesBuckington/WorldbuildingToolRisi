@@ -1,11 +1,28 @@
 // src/App.jsx
-import { useMemo, useState } from "react";
-import { Routes, Route, Link } from "react-router-dom";
+import { Routes, Route, Link, Navigate } from "react-router-dom";
 import HomePage from "./pages/HomePage.jsx";
 import EntryPage from "./pages/EntryPage.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
 import { useWiki } from "./store/wikiStore.jsx";
+import { useAuth } from "./store/authStore.jsx";
 
 function App() {
+  const { user, authLoading, logout } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="app">
+        <main className="main">
+          <div className="page-container">
+            <div className="page">
+              <p>Loading…</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <header className="topbar">
@@ -19,12 +36,23 @@ function App() {
           </div>
 
           <nav className="topbar-nav">
-            <Link className="topbar-link" to="/">
-              Home
-            </Link>
-            <Link className="topbar-link" to="/entries">
-              Entries
-            </Link>
+            {user ? (
+              <>
+                <Link className="topbar-link" to="/">
+                  Home
+                </Link>
+                <Link className="topbar-link" to="/entries">
+                  Entries
+                </Link>
+                <button className="fantasy-button secondary topbar-button" onClick={logout}>
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link className="topbar-link" to="/login">
+                Login
+              </Link>
+            )}
           </nav>
         </div>
       </header>
@@ -32,9 +60,37 @@ function App() {
       <main className="main">
         <div className="page-container">
           <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/entries" element={<EntryListPage />} />
-            <Route path="/entry/:entryId" element={<EntryPage />} />
+            <Route
+              path="/login"
+              element={user ? <Navigate to="/" replace /> : <LoginPage />}
+            />
+
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute user={user}>
+                  <HomePage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/entries"
+              element={
+                <ProtectedRoute user={user}>
+                  <EntryListPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/entry/:entryId"
+              element={
+                <ProtectedRoute user={user}>
+                  <EntryPage />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </div>
       </main>
@@ -42,43 +98,27 @@ function App() {
   );
 }
 
+function ProtectedRoute({ user, children }) {
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
 function EntryListPage() {
   const { entries } = useWiki();
-  const [search, setSearch] = useState("");
-
   const entriesArray = Object.values(entries);
-
-  const filteredEntries = useMemo(() => {
-    const query = search.trim().toLowerCase();
-
-    if (!query) return entriesArray;
-
-    return entriesArray.filter((entry) => {
-      const title = (entry.title || "").toLowerCase();
-      const type = (entry.type || "").toLowerCase();
-      return title.includes(query) || type.includes(query);
-    });
-  }, [entriesArray, search]);
 
   return (
     <div className="page">
       <h2 className="page-title">All Entries</h2>
 
-      <div className="page-toolbar">
-        <input
-          className="fantasy-input"
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search entries by title or type..."
-        />
-      </div>
+      {entriesArray.length === 0 && <p>No entries yet.</p>}
 
-      {filteredEntries.length === 0 && <p>No matching entries found.</p>}
-
-      {filteredEntries.length > 0 && (
+      {entriesArray.length > 0 && (
         <ul className="entry-list">
-          {filteredEntries.map((entry) => (
+          {entriesArray.map((entry) => (
             <li key={entry.id} className="entry-list-item">
               <Link to={`/entry/${entry.id}`} className="entry-link">
                 {entry.title}
