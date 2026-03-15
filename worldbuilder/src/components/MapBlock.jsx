@@ -1,6 +1,7 @@
 // src/components/MapBlock.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../store/authStore.jsx";
 import {
   MapContainer,
   ImageOverlay,
@@ -99,6 +100,7 @@ function MapClickHandler({ imageWidth, imageHeight, onMapClick, enabled }) {
 }
 
 function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMoveUp, onMoveDown }) {
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const {
     entries,
@@ -145,6 +147,7 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
       iconKey: "default",
       targetEntryId: "",
       createNewEntry: false,
+      visibility: "public",
     });
   };
 
@@ -166,6 +169,7 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
       screenX,
       screenY,
       targetEntryId: marker.entryId || "",
+      visibility: marker.visibility || "public",
     });
   };
 
@@ -193,6 +197,7 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
       y: pendingMarker.y,
       label,
       iconKey: pendingMarker.iconKey,
+      visibility: pendingMarker.visibility,
     });
 
     setPendingMarker(null);
@@ -212,6 +217,7 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
       entryId,
       label,
       iconKey: editingMarker.iconKey,
+      visibility: editingMarker.visibility,
     });
 
     setEditingMarker(null);
@@ -247,9 +253,31 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
           }}
           onClick={(e) => e.stopPropagation()}
         >
+
           <div className="marker-menu__title">
             {isEditing ? "Edit Marker" : "Create Marker"}
           </div>
+
+          {isAdmin && (
+            <>
+              <label className="field-label">Visibility</label>
+              <select
+                className="fantasy-input"
+                value={menuState.visibility || "public"}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (isEditing) {
+                    setEditingMarker((prev) => ({ ...prev, visibility: value }));
+                  } else {
+                    setPendingMarker((prev) => ({ ...prev, visibility: value }));
+                  }
+                }}
+              >
+                <option value="public">Public</option>
+                <option value="admin">Admin Only</option>
+              </select>
+            </>
+          )}
 
           <label className="field-label">Label</label>
           <input

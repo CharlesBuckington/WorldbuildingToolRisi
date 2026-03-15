@@ -2,11 +2,14 @@
 import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useWiki } from "../store/wikiStore.jsx";
+import { useAuth } from "../store/authStore.jsx";
 import TextBlock from "../components/TextBlock.jsx";
 import ImageBlock from "../components/ImageBlock.jsx";
 import MapBlock from "../components/MapBlock.jsx";
 
+
 function EntryPage() {
+  const { isAdmin } = useAuth();
   const { entryId } = useParams();
   const navigate = useNavigate();
   const {
@@ -153,6 +156,20 @@ return (
                 <option value="quest">Quest</option>
                 <option value="note">Note</option>
               </select>
+
+              {isAdmin && (
+              <>
+                <label className="field-label">Visibility</label>
+                <select
+                  className="fantasy-input"
+                  value={entry.visibility || "public"}
+                  onChange={(e) => updateEntry(entryId, { visibility: e.target.value })}
+                >
+                  <option value="public">Public</option>
+                  <option value="admin">Admin Only</option>
+                </select>
+              </>
+            )}
             </>
           ) : (
             <>

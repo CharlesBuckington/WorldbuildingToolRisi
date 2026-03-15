@@ -11,10 +11,12 @@ import {
   writeBatch,
   serverTimestamp,
 } from "firebase/firestore";
+import { useAuth } from "./authStore.jsx";
 
 const WikiContext = createContext(null);
 
 export function WikiProvider({ children }) {
+  const { isAdmin } = useAuth();
   const [entries, setEntries] = useState({});
   const [blocks, setBlocks] = useState({});
   const [markers, setMarkers] = useState({});
@@ -72,6 +74,7 @@ export function WikiProvider({ children }) {
       title: partial.title ?? "New Entry",
       type: partial.type ?? "location",
       summary: partial.summary ?? "",
+      visibility: partial.visibility ?? "public",
     });
   };
 
@@ -149,6 +152,7 @@ export function WikiProvider({ children }) {
       y: partial.y,
       label: partial.label ?? "New Marker",
       iconKey: partial.iconKey ?? "default",
+      visibility: partial.visibility ?? "public",
     });
   };
 
@@ -191,11 +195,29 @@ export function WikiProvider({ children }) {
     ]);
   };
 
+  const visibleEntries = useMemo(() => {
+    return Object.fromEntries(
+      Object.entries(entries).filter(([, entry]) => {
+        if (isAdmin) return true;
+        return (entry.visibility ?? "public") === "public";
+      })
+    );
+  }, [entries, isAdmin]);
+
+  const visibleMarkers = useMemo(() => {
+    return Object.fromEntries(
+      Object.entries(markers).filter(([, marker]) => {
+        if (isAdmin) return true;
+        return (marker.visibility ?? "public") === "public";
+      })
+    );
+  }, [markers, isAdmin]);
+
   const value = useMemo(
     () => ({
-      entries,
+      entries: visibleEntries,
       blocks,
-      markers,
+      markers: visibleMarkers,
       loading,
       createEntry,
       updateEntry,
@@ -208,7 +230,7 @@ export function WikiProvider({ children }) {
       deleteMarker,
       moveBlock
     }),
-    [entries, blocks, markers, loading]
+    [visibleEntries, blocks, visibleMarkers, loading]
   );
 
 

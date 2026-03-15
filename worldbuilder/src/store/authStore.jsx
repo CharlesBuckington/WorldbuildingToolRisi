@@ -7,17 +7,46 @@ import {
   onAuthStateChanged,
   updateProfile,
 } from "firebase/auth";
-import { auth } from "../firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { auth, db } from "../firebase";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
+
+      if (!firebaseUser) {
+        setUserProfile(null);
+        setAuthLoading(false);
+        return;
+      }
+
+      try {
+        const userRef = doc(db, "users", firebaseUser.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          setUserProfile(userSnap.data());
+        } else {
+          // fallback profile if no Firestore user doc exists yet
+          const fallbackProfile = {
+            uid: firebaseUser.uid,
+            displayName: firebaseUser.displayName || "Adventurer",
+            role: "user",
+          };
+          setUserProfile(fallbackProfile);
+        }
+      } catch (error) {
+        console.error("Failed to load user profile:", error);
+        setUserProfile(null);
+      }
+
       setAuthLoading(false);
     });
 
@@ -33,6 +62,13 @@ export function AuthProvider({ children }) {
       });
     }
 
+    // Create default Firestore profile for self-signup users
+    await setDoc(doc(db, "users", result.user.uid), {
+      uid: result.user.uid,
+      displayName: displayName.trim() || "Adventurer",
+      role: "user",
+    });
+
     return result.user;
   };
 
@@ -45,14 +81,18 @@ export function AuthProvider({ children }) {
     await signOut(auth);
   };
 
+  const isAdmin = userProfile?.role === "admin";
+
   return (
     <AuthContext.Provider
       value={{
         user,
+        userProfile,
         authLoading,
         signup,
         login,
         logout,
+        isAdmin,
       }}
     >
       {children}
