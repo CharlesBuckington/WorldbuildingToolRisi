@@ -1,5 +1,5 @@
 // src/components/TextBlock.jsx
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useWiki } from "../store/wikiStore.jsx";
 
@@ -78,14 +78,32 @@ function getLinkQueryInfo(text, cursorPosition) {
 }
 
 function TextBlock({ block, mode, canMoveUp, canMoveDown, onMoveUp, onMoveDown }) {
+  const [textValue, setTextValue] = useState(block.text || "");
   const { entries, updateBlock, deleteBlock } = useWiki();
   const [cursorPosition, setCursorPosition] = useState(0);
 
   const entriesArray = Object.values(entries);
 
+  useEffect(() => {
+    if (mode !== "edit") {
+      setTextValue(block.text || "");
+    }
+  }, [block.id, block.text, mode]);
+
+  useEffect(() => {
+    if (mode !== "edit") return;
+    if (textValue === (block.text || "")) return;
+
+    const timeoutId = window.setTimeout(() => {
+      updateBlock(block.id, { text: textValue });
+    }, 300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [textValue, block.id, block.text, mode, updateBlock]);
+
   const linkQueryInfo = useMemo(() => {
-    return getLinkQueryInfo(block.text || "", cursorPosition);
-  }, [block.text, cursorPosition]);
+    return getLinkQueryInfo(textValue, cursorPosition);
+  }, [textValue, cursorPosition]);
 
   const suggestions = useMemo(() => {
     if (!linkQueryInfo) return [];
@@ -101,7 +119,7 @@ function TextBlock({ block, mode, canMoveUp, canMoveDown, onMoveUp, onMoveDown }
   }, [entriesArray, linkQueryInfo]);
 
   const handleTextareaChange = (e) => {
-    updateBlock(block.id, { text: e.target.value });
+    setTextValue(e.target.value);
     setCursorPosition(e.target.selectionStart ?? 0);
   };
 
@@ -109,17 +127,23 @@ function TextBlock({ block, mode, canMoveUp, canMoveDown, onMoveUp, onMoveDown }
     setCursorPosition(e.target.selectionStart ?? 0);
   };
 
+  const handleTextareaBlur = async () => {
+    if (textValue !== (block.text || "")) {
+      await updateBlock(block.id, { text: textValue });
+    }
+  };
+
   const insertSuggestion = (entryTitle) => {
     if (!linkQueryInfo) return;
 
-    const text = block.text || "";
+    const text = textValue;
     const before = text.slice(0, linkQueryInfo.startIndex);
     const after = text.slice(cursorPosition);
     const inserted = `[[${entryTitle}]]`;
 
-    updateBlock(block.id, {
-      text: before + inserted + after,
-    });
+    const nextText = before + inserted + after;
+    setTextValue(nextText);
+    setCursorPosition((before + inserted).length);
   };
 
   return (
@@ -129,11 +153,12 @@ function TextBlock({ block, mode, canMoveUp, canMoveDown, onMoveUp, onMoveDown }
           <div className="text-block-editor">
             <textarea
               className="fantasy-input"
-              value={block.text || ""}
+              value={textValue}
               onChange={handleTextareaChange}
               onClick={handleTextareaSelect}
               onKeyUp={handleTextareaSelect}
               onSelect={handleTextareaSelect}
+              onBlur={handleTextareaBlur}
               rows={10}
               placeholder="Write text here. Use [[Entry Title]] for links."
             />

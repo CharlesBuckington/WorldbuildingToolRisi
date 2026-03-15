@@ -1,14 +1,9 @@
-- "Maps" Page is not needed => "Entries" is enough. Each Entry has its own kind of layout behind it.
-All that is needed is a home screen with "New Campaign" Buttons as well as a link to the whole World
-- context menu needs to be placed more smartly
-- overhaul css, make use of material UI (or a more DND themed ui)
-- Each location needs a Navbar at the top that allows for quick "back to map" with correct placement
-- Zooming in on points loads new map
-- Allow deletion of sites/maps from the tool
-- Login/ Security
+- Fullscreen
+- media Query
+- Hide Markers pointing to admin Only entries
 
-
-
+dungeon_master@gmx.de
+Dungeon1234
 
 https://worldbuilderrisi.web.app/
 #firebase deploy --only hosting
