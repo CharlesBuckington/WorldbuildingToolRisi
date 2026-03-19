@@ -1,15 +1,72 @@
-// src/pages/HomePage.jsx
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useWiki } from "../store/wikiStore.jsx";
+import { useAuth } from "../store/authStore.jsx";
 
 function HomePage() {
   const { entries, createEntry } = useWiki();
+  const { user, userProfile, activeCampaignId } = useAuth();
   const [title, setTitle] = useState("");
   const [type, setType] = useState("location");
   const navigate = useNavigate();
 
-  const entriesArray = Object.values(entries);
+  const entriesArray = useMemo(() => {
+    return Object.values(entries).sort((a, b) => {
+      const aTime = a.updatedAt?.seconds ?? 0;
+      const bTime = b.updatedAt?.seconds ?? 0;
+      return bTime - aTime;
+    });
+  }, [entries]);
+
+  const pinnedEntries = useMemo(() => {
+    const pinnedIds = userProfile?.pinnedEntryIds ?? [];
+    return pinnedIds.map((entryId) => entries[entryId]).filter(Boolean);
+  }, [entries, userProfile]);
+
+  const personalNotesEntryId =
+    userProfile?.personalNotesEntryIds?.[activeCampaignId] ?? null;
+
+  const characterEntryId =
+    userProfile?.playerCharacterEntryIds?.[activeCampaignId] ?? null;
+
+  const lastEditedByYou = useMemo(() => {
+    return entriesArray
+      .filter((entry) => entry.updatedBy === user?.uid)
+      .slice(0, 5);
+  }, [entriesArray, user]);
+
+  const recentEntries = useMemo(() => {
+    return entriesArray.slice(0, 6);
+  }, [entriesArray]);
+
+  const sessionInfo = useMemo(() => {
+    const targetDate = new Date("2026-03-28T18:00:00");
+    const now = new Date();
+    const diffMs = targetDate.getTime() - now.getTime();
+
+    if (diffMs <= 0) {
+      return {
+        label: "Session day is here",
+        detail: "Prepare your dice and spells.",
+      };
+    }
+
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor(
+      (diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+    );
+
+    return {
+      label: `${days}d ${hours}h until next session`,
+      detail: "Saturday, 28 March 2026 · 18:00",
+    };
+  }, []);
+
+  const sharedLinks = [
+    { label: "DnDBeyond Campaign", url: "#" },
+    { label: "Character Sheets", url: "#" },
+    { label: "Encounter Builder", url: "#" },
+  ];
 
   const handleCreateEntry = async () => {
     const trimmed = title.trim();
@@ -18,6 +75,7 @@ function HomePage() {
     const entry = await createEntry({
       title: trimmed,
       type,
+      tags: [type],
     });
 
     setTitle("");
@@ -25,49 +83,196 @@ function HomePage() {
   };
 
   return (
-    <div className="page">
-      <h2>Dashboard</h2>
+    <div className="page home-dashboard">
+      <section className="home-hero content-block">
+        <div>
+          <p className="home-eyebrow">Active Campaign</p>
+          <h2 className="home-hero__title">Zerinthra</h2>
+          <p className="home-hero__text">
+            A shared campaign hub for characters, places, quests, lore, and
+            private notes.
+          </p>
+        </div>
 
-      <section style={{ marginBottom: "2rem" }}>
-        <h3>Create Entry</h3>
-
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Neverwinter, Goblin Camp, Lord Harbin..."
-          style={{ display: "block", width: "100%", marginBottom: "0.5rem" }}
-        />
-
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          style={{ display: "block", width: "100%", marginBottom: "0.5rem" }}
-        >
-          <option value="location">Location</option>
-          <option value="npc">NPC</option>
-          <option value="faction">Faction</option>
-          <option value="quest">Quest</option>
-          <option value="note">Note</option>
-        </select>
-
-        <button onClick={handleCreateEntry}>Create Entry</button>
+        <div className="home-session">
+          <div className="home-session__label">{sessionInfo.label}</div>
+          <div className="home-session__detail">{sessionInfo.detail}</div>
+        </div>
       </section>
 
-      <section>
-        <h3>Recent Entries</h3>
-        {entriesArray.length === 0 && <p>No entries yet.</p>}
-        {entriesArray.length > 0 && (
-          <ul>
-            {entriesArray.map((entry) => (
-              <li key={entry.id}>
-                <Link to={`/entry/${entry.id}`}>{entry.title}</Link>{" "}
-                <span style={{ opacity: 0.6 }}>({entry.type})</span>
+      <div className="home-grid home-grid--top">
+        <section className="content-block home-card">
+          <p className="home-card__eyebrow">Your Profile</p>
+          <div className="home-profile">
+            {userProfile?.photoURL ? (
+              <img
+                src={userProfile.photoURL}
+                alt={userProfile.displayName || "Profile"}
+                className="home-profile__image"
+              />
+            ) : (
+              <div className="home-profile__image home-profile__image--placeholder">
+                {(userProfile?.displayName || "A").slice(0, 1).toUpperCase()}
+              </div>
+            )}
+
+            <div className="home-profile__body">
+              <h3 className="home-card__title">
+                {userProfile?.displayName || "Adventurer"}
+              </h3>
+              <p className="home-card__text">Campaign ID: {activeCampaignId}</p>
+
+              <div className="block-actions">
+                {characterEntryId && (
+                  <Link
+                    className="fantasy-button secondary"
+                    to={`/entry/${characterEntryId}`}
+                  >
+                    My Character
+                  </Link>
+                )}
+
+                {personalNotesEntryId && (
+                  <Link
+                    className="fantasy-button secondary"
+                    to={`/entry/${personalNotesEntryId}`}
+                  >
+                    Personal Notes
+                  </Link>
+                )}
+
+                <Link className="fantasy-button secondary" to="/party">
+                  My Party
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="content-block home-card">
+          <p className="home-card__eyebrow">Create Entry</p>
+          <h3 className="home-card__title">Add something new</h3>
+          <p className="home-card__text">
+            Create a new location, NPC, faction, quest, or note.
+          </p>
+
+          <div className="block-edit-fields">
+            <label className="field-label">Title</label>
+            <input
+              className="fantasy-input"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Neverwinter, Goblin Camp, Lord Harbin..."
+            />
+
+            <label className="field-label">Type</label>
+            <select
+              className="fantasy-input"
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+            >
+              <option value="location">Location</option>
+              <option value="npc">NPC</option>
+              <option value="faction">Faction</option>
+              <option value="quest">Quest</option>
+              <option value="note">Note</option>
+            </select>
+          </div>
+
+          <div className="block-actions">
+            <button className="fantasy-button" type="button" onClick={handleCreateEntry}>
+              Create Entry
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div className="home-grid home-grid--middle">
+        <section className="content-block home-card">
+          <p className="home-card__eyebrow">Quick Access</p>
+          <h3 className="home-card__title">Pinned entries</h3>
+
+          {pinnedEntries.length === 0 ? (
+            <p className="home-card__text">
+              No pinned entries yet. Later you can pin important locations,
+              quests, NPCs, and notes here.
+            </p>
+          ) : (
+            <ul className="entry-list">
+              {pinnedEntries.map((entry) => (
+                <li key={entry.id} className="entry-list-item">
+                  <Link to={`/entry/${entry.id}`} className="entry-link">
+                    {entry.title}
+                  </Link>
+                  <span className="entry-type-label">({entry.type})</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="content-block home-card">
+          <p className="home-card__eyebrow">Your Activity</p>
+          <h3 className="home-card__title">Last edited by you</h3>
+
+          {lastEditedByYou.length === 0 ? (
+            <p className="home-card__text">You have not edited any entries yet.</p>
+          ) : (
+            <ul className="entry-list">
+              {lastEditedByYou.map((entry) => (
+                <li key={entry.id} className="entry-list-item">
+                  <Link to={`/entry/${entry.id}`} className="entry-link">
+                    {entry.title}
+                  </Link>
+                  <span className="entry-type-label">({entry.type})</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      <section className="content-block home-card">
+        <p className="home-card__eyebrow">Campaign Activity</p>
+        <h3 className="home-card__title">Recent entries</h3>
+
+        {recentEntries.length === 0 ? (
+          <p className="home-card__text">No entries yet.</p>
+        ) : (
+          <ul className="entry-list">
+            {recentEntries.map((entry) => (
+              <li key={entry.id} className="entry-list-item">
+                <Link to={`/entry/${entry.id}`} className="entry-link">
+                  {entry.title}
+                </Link>
+                <span className="entry-type-label">({entry.type})</span>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      <footer className="home-footer content-block">
+        <div>
+          <p className="home-card__eyebrow">Shared Links</p>
+          <h3 className="home-card__title">Campaign Resources</h3>
+        </div>
+
+        <div className="home-footer__links">
+          {sharedLinks.map((link) => (
+            <a
+              key={link.label}
+              className="home-footer__link"
+              href={link.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
+      </footer>
     </div>
   );
 }

@@ -7,10 +7,141 @@ import {
   onAuthStateChanged,
   updateProfile,
 } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
 const AuthContext = createContext(null);
+const DEFAULT_CAMPAIGN_ID = "zerinthra";
+
+async function ensureDefaultCampaign() {
+  const campaignRef = doc(db, "campaigns", DEFAULT_CAMPAIGN_ID);
+  const campaignSnap = await getDoc(campaignRef);
+
+  if (!campaignSnap.exists()) {
+    await setDoc(campaignRef, {
+      id: DEFAULT_CAMPAIGN_ID,
+      name: "Zerinthra",
+      description: "Main campaign",
+      sessionDate: null,
+      sharedLinks: [],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
+}
+
+async function createPersonalNotesEntry(firebaseUser, campaignId) {
+  const entryRef = doc(collection(db, "entries"));
+  const entryData = {
+    id: entryRef.id,
+    title: `${firebaseUser.displayName || "Adventurer"} - Personal Notes`,
+    type: "note",
+    tags: ["note", "personal"],
+    campaignId,
+    visibility: "private",
+    ownerUid: firebaseUser.uid,
+    summary: "",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    updatedBy: firebaseUser.uid,
+  };
+
+  await setDoc(entryRef, entryData);
+  return entryData.id;
+}
+
+async function ensureUserProfile(firebaseUser) {
+  await ensureDefaultCampaign();
+
+  const userRef = doc(db, "users", firebaseUser.uid);
+  const userSnap = await getDoc(userRef);
+
+  const displayName = firebaseUser.displayName || "Adventurer";
+
+  if (!userSnap.exists()) {
+    const personalNotesEntryId = await createPersonalNotesEntry(
+      firebaseUser,
+      DEFAULT_CAMPAIGN_ID
+    );
+
+    const newProfile = {
+      uid: firebaseUser.uid,
+      displayName,
+      role: "user",
+      photoURL: "",
+      campaignIds: [DEFAULT_CAMPAIGN_ID],
+      activeCampaignId: DEFAULT_CAMPAIGN_ID,
+      pinnedEntryIds: [],
+      playerCharacterEntryIds: {},
+      personalNotesEntryIds: {
+        [DEFAULT_CAMPAIGN_ID]: personalNotesEntryId,
+      },
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    await setDoc(userRef, newProfile);
+    return {
+      ...newProfile,
+      createdAt: null,
+      updatedAt: null,
+    };
+  }
+
+  const existingProfile = userSnap.data();
+  const updates = {};
+
+  if (!Array.isArray(existingProfile.campaignIds)) {
+    updates.campaignIds = [DEFAULT_CAMPAIGN_ID];
+  }
+
+  if (!existingProfile.activeCampaignId) {
+    updates.activeCampaignId = DEFAULT_CAMPAIGN_ID;
+  }
+
+  if (!Array.isArray(existingProfile.pinnedEntryIds)) {
+    updates.pinnedEntryIds = [];
+  }
+
+  if (!existingProfile.playerCharacterEntryIds) {
+    updates.playerCharacterEntryIds = {};
+  }
+
+  if (!existingProfile.personalNotesEntryIds) {
+    updates.personalNotesEntryIds = {};
+  }
+
+  if (typeof existingProfile.photoURL !== "string") {
+    updates.photoURL = "";
+  }
+
+  if (!existingProfile.displayName) {
+    updates.displayName = displayName;
+  }
+
+  const notesMap = existingProfile.personalNotesEntryIds ?? {};
+  if (!notesMap[DEFAULT_CAMPAIGN_ID]) {
+    const personalNotesEntryId = await createPersonalNotesEntry(
+      firebaseUser,
+      DEFAULT_CAMPAIGN_ID
+    );
+
+    updates.personalNotesEntryIds = {
+      ...notesMap,
+      [DEFAULT_CAMPAIGN_ID]: personalNotesEntryId,
+    };
+  }
+
+  if (Object.keys(updates).length > 0) {
+    updates.updatedAt = serverTimestamp();
+    await setDoc(userRef, updates, { merge: true });
+  }
+
+  return {
+    ...existingProfile,
+    ...updates,
+  };
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -28,22 +159,10 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        const userRef = doc(db, "users", firebaseUser.uid);
-        const userSnap = await getDoc(userRef);
-
-        if (userSnap.exists()) {
-          setUserProfile(userSnap.data());
-        } else {
-          // fallback profile if no Firestore user doc exists yet
-          const fallbackProfile = {
-            uid: firebaseUser.uid,
-            displayName: firebaseUser.displayName || "Adventurer",
-            role: "user",
-          };
-          setUserProfile(fallbackProfile);
-        }
+        const profile = await ensureUserProfile(firebaseUser);
+        setUserProfile(profile);
       } catch (error) {
-        console.error("Failed to load user profile:", error);
+        console.error("Failed to load or create user profile:", error);
         setUserProfile(null);
       }
 
@@ -62,13 +181,6 @@ export function AuthProvider({ children }) {
       });
     }
 
-    // Create default Firestore profile for self-signup users
-    await setDoc(doc(db, "users", result.user.uid), {
-      uid: result.user.uid,
-      displayName: displayName.trim() || "Adventurer",
-      role: "user",
-    });
-
     return result.user;
   };
 
@@ -79,6 +191,72 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     await signOut(auth);
+  };
+
+  const updateUserProfile = async (updates) => {
+    if (!user) return;
+
+    const userRef = doc(db, "users", user.uid);
+    await setDoc(
+      userRef,
+      {
+        ...updates,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    setUserProfile((prev) => ({
+      ...prev,
+      ...updates,
+    }));
+  };
+
+  const setPlayerCharacterEntry = async (campaignId, entryId) => {
+    if (!user) return;
+
+    const nextMap = {
+      ...(userProfile?.playerCharacterEntryIds ?? {}),
+      [campaignId]: entryId,
+    };
+
+    await updateUserProfile({
+      playerCharacterEntryIds: nextMap,
+    });
+  };
+
+  const setPersonalNotesEntry = async (campaignId, entryId) => {
+    if (!user) return;
+
+    const nextMap = {
+      ...(userProfile?.personalNotesEntryIds ?? {}),
+      [campaignId]: entryId,
+    };
+
+    await updateUserProfile({
+      personalNotesEntryIds: nextMap,
+    });
+  };
+
+  const pinEntry = async (entryId) => {
+    if (!user) return;
+
+    const current = userProfile?.pinnedEntryIds ?? [];
+    if (current.includes(entryId)) return;
+
+    await updateUserProfile({
+      pinnedEntryIds: [...current, entryId],
+    });
+  };
+
+  const unpinEntry = async (entryId) => {
+    if (!user) return;
+
+    const current = userProfile?.pinnedEntryIds ?? [];
+
+    await updateUserProfile({
+      pinnedEntryIds: current.filter((id) => id !== entryId),
+    });
   };
 
   const isAdmin = userProfile?.role === "admin";
@@ -93,6 +271,12 @@ export function AuthProvider({ children }) {
         login,
         logout,
         isAdmin,
+        activeCampaignId: userProfile?.activeCampaignId ?? DEFAULT_CAMPAIGN_ID,
+        updateUserProfile,
+        setPlayerCharacterEntry,
+        setPersonalNotesEntry,
+        pinEntry,
+        unpinEntry,
       }}
     >
       {children}

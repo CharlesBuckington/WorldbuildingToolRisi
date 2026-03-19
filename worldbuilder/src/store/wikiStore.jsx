@@ -16,7 +16,7 @@ import { useAuth } from "./authStore.jsx";
 const WikiContext = createContext(null);
 
 export function WikiProvider({ children }) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, activeCampaignId } = useAuth();
   const [entries, setEntries] = useState({});
   const [blocks, setBlocks] = useState({});
   const [markers, setMarkers] = useState({});
@@ -74,7 +74,11 @@ export function WikiProvider({ children }) {
       title: partial.title ?? "New Entry",
       type: partial.type ?? "location",
       summary: partial.summary ?? "",
+      tags: partial.tags ?? [],
+      campaignId: partial.campaignId ?? activeCampaignId,
       visibility: partial.visibility ?? "public",
+      ownerUid: partial.ownerUid ?? null,
+      updatedBy: user?.uid ?? null,
     });
   };
 
@@ -82,6 +86,7 @@ export function WikiProvider({ children }) {
     await updateDoc(doc(db, "entries", entryId), {
       ...updates,
       updatedAt: serverTimestamp(),
+      updatedBy: user?.uid ?? null,
     });
   };
 
@@ -197,11 +202,28 @@ export function WikiProvider({ children }) {
   const visibleEntries = useMemo(() => {
     return Object.fromEntries(
       Object.entries(entries).filter(([, entry]) => {
-        if (isAdmin) return true;
-        return (entry.visibility ?? "public") === "public";
+        if (isAdmin) {
+          return true;
+        }
+
+        if ((entry.campaignId ?? activeCampaignId) !== activeCampaignId) {
+          return false;
+        }
+
+        const visibility = entry.visibility ?? "public";
+
+        if (visibility === "public") {
+          return true;
+        }
+
+        if (visibility === "private") {
+          return entry.ownerUid === user?.uid;
+        }
+
+        return false;
       })
     );
-  }, [entries, isAdmin]);
+  }, [entries, isAdmin, activeCampaignId, user]);
 
   const visibleMarkers = useMemo(() => {
     return Object.fromEntries(
@@ -218,10 +240,24 @@ export function WikiProvider({ children }) {
           return false;
         }
 
-        return (linkedEntry.visibility ?? "public") === "public";
+        if ((linkedEntry.campaignId ?? activeCampaignId) !== activeCampaignId) {
+          return false;
+        }
+
+        const visibility = linkedEntry.visibility ?? "public";
+
+        if (visibility === "public") {
+          return true;
+        }
+
+        if (visibility === "private") {
+          return linkedEntry.ownerUid === user?.uid;
+        }
+
+        return false;
       })
     );
-  }, [markers, entries, isAdmin]);
+  }, [markers, entries, isAdmin, activeCampaignId, user]);
 
   const value = useMemo(
     () => ({
