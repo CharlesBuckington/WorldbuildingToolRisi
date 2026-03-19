@@ -29,9 +29,29 @@ const defaultIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
+const adminIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  shadowSize: [41, 41],
+});
+
 const iconCache = {};
 
-function getIconForMarker(marker) {
+function getIconForMarker(marker, entries, isAdmin) {
+  const linkedEntry = marker.entryId ? entries[marker.entryId] : null;
+
+  const isAdminOnly =
+    isAdmin &&
+    linkedEntry &&
+    (linkedEntry.visibility ?? "public") === "admin";
+
+  if (isAdminOnly) {
+    return adminIcon;
+  }
+
   const key = marker.iconKey || "default";
 
   if (key === "default") {
@@ -111,6 +131,31 @@ function MapResizeHandler({ trigger }) {
 
     return () => window.clearTimeout(timeoutId);
   }, [map, trigger]);
+
+  return null;
+}
+
+function MapScrollZoomGuard({ bounds }) {
+  const map = useMap();
+
+  useEffect(() => {
+    map.scrollWheelZoom.disable();
+  }, [map]);
+
+  useMapEvents({
+    mousemove(e) {
+      if (!bounds) return;
+
+      if (bounds.contains(e.latlng)) {
+        map.scrollWheelZoom.enable();
+      } else {
+        map.scrollWheelZoom.disable();
+      }
+    },
+    mouseout() {
+      map.scrollWheelZoom.disable();
+    },
+  });
 
   return null;
 }
@@ -431,10 +476,10 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
 
   const hasValidImage = Boolean(block.imageFilename && block.width && block.height);
   const bounds = hasValidImage
-    ? [
+    ? L.latLngBounds(
         [0, 0],
-        [block.height, block.width],
-      ]
+        [block.height, block.width]
+      )
     : null;
 
   return (
@@ -503,12 +548,13 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
                 height: "100%",
                 background: "#1a1712",
               }}
-              minZoom={-4}
+              minZoom={-3}
               maxZoom={4}
               maxBounds={bounds}
               maxBoundsViscosity={0.8}      
             >
               <MapResizeHandler trigger={isFullscreen} />
+              <MapScrollZoomGuard bounds={L.latLngBounds(bounds)} />
 
               <ImageOverlay url={`/Img/${block.imageFilename}`} bounds={bounds} />
 
@@ -528,7 +574,7 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
                   <Marker
                     key={marker.id}
                     position={position}
-                    icon={getIconForMarker(marker)}
+                    icon={getIconForMarker(marker, entries, isAdmin)}
                     eventHandlers={{
                       click: (e) => handleMarkerClick(marker, e),
                       contextmenu: (e) => handleMarkerClick(marker, e),
