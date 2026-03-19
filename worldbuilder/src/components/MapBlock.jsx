@@ -1,5 +1,5 @@
 // src/components/MapBlock.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../store/authStore.jsx";
 import {
@@ -7,6 +7,7 @@ import {
   ImageOverlay,
   Marker,
   Tooltip,
+  useMap,
   useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
@@ -99,9 +100,26 @@ function MapClickHandler({ imageWidth, imageHeight, onMapClick, enabled }) {
   return null;
 }
 
+function MapResizeHandler({ trigger }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      map.invalidateSize();
+      map.fitBounds(map.getBounds(), { animate: false });
+    }, 150);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [map, trigger]);
+
+  return null;
+}
+
 function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMoveUp, onMoveDown }) {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
+  const mapFrameRef = useRef(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const {
     entries,
     updateBlock,
@@ -134,6 +152,39 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
     img.src = `/Img/${block.imageFilename}`;
   }, [block.id, block.imageFilename, block.width, block.height, updateBlock]);
 
+  // Fullscreen
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === mapFrameRef.current);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
+  const handleEnterFullscreen = async () => {
+    if (!mapFrameRef.current) return;
+
+    try {
+      await mapFrameRef.current.requestFullscreen();
+    } catch (error) {
+      console.error("Failed to enter fullscreen:", error);
+    }
+  };
+
+  const handleExitFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+    } catch (error) {
+      console.error("Failed to exit fullscreen:", error);
+    }
+  };
+
   const handleMapClick = ({ x, y, screenX, screenY }) => {
     if (mode !== "edit") return;
 
@@ -147,7 +198,6 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
       iconKey: "default",
       targetEntryId: "",
       createNewEntry: false,
-      visibility: "public",
     });
   };
 
@@ -169,7 +219,6 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
       screenX,
       screenY,
       targetEntryId: marker.entryId || "",
-      visibility: marker.visibility || "public",
     });
   };
 
@@ -197,7 +246,6 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
       y: pendingMarker.y,
       label,
       iconKey: pendingMarker.iconKey,
-      visibility: pendingMarker.visibility,
     });
 
     setPendingMarker(null);
@@ -217,7 +265,6 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
       entryId,
       label,
       iconKey: editingMarker.iconKey,
-      visibility: editingMarker.visibility,
     });
 
     setEditingMarker(null);
@@ -257,27 +304,6 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
           <div className="marker-menu__title">
             {isEditing ? "Edit Marker" : "Create Marker"}
           </div>
-
-          {isAdmin && (
-            <>
-              <label className="field-label">Visibility</label>
-              <select
-                className="fantasy-input"
-                value={menuState.visibility || "public"}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (isEditing) {
-                    setEditingMarker((prev) => ({ ...prev, visibility: value }));
-                  } else {
-                    setPendingMarker((prev) => ({ ...prev, visibility: value }));
-                  }
-                }}
-              >
-                <option value="public">Public</option>
-                <option value="admin">Admin Only</option>
-              </select>
-            </>
-          )}
 
           <label className="field-label">Label</label>
           <input
@@ -445,14 +471,45 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
 
       {hasValidImage && (
         <>
-          <div className="map-block__frame">
+          <div
+            ref={mapFrameRef}
+            className={`map-block__frame ${isFullscreen ? "is-fullscreen" : ""}`}
+          >
+            <div className="map-block__toolbar">
+              {isFullscreen ? (
+                <button
+                  className="fantasy-button secondary"
+                  type="button"
+                  onClick={handleExitFullscreen}
+                >
+                  Exit Fullscreen
+                </button>
+              ) : (
+                <button
+                  className="fantasy-button secondary"
+                  type="button"
+                  onClick={handleEnterFullscreen}
+                >
+                  Show Map Fullscreen
+                </button>
+              )}
+            </div>
+
             <MapContainer
               crs={L.CRS.Simple}
               bounds={bounds}
-              style={{ width: "100%", height: "70vh", background: "#1a1712" }}
-              minZoom={-2}
+              style={{
+                width: "100%",
+                height: "100%",
+                background: "#1a1712",
+              }}
+              minZoom={-4}
               maxZoom={4}
+              maxBounds={bounds}
+              maxBoundsViscosity={0.8}      
             >
+              <MapResizeHandler trigger={isFullscreen} />
+
               <ImageOverlay url={`/Img/${block.imageFilename}`} bounds={bounds} />
 
               <MapClickHandler

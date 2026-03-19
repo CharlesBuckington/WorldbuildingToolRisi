@@ -152,7 +152,6 @@ export function WikiProvider({ children }) {
       y: partial.y,
       label: partial.label ?? "New Marker",
       iconKey: partial.iconKey ?? "default",
-      visibility: partial.visibility ?? "public",
     });
   };
 
@@ -208,10 +207,21 @@ export function WikiProvider({ children }) {
     return Object.fromEntries(
       Object.entries(markers).filter(([, marker]) => {
         if (isAdmin) return true;
-        return (marker.visibility ?? "public") === "public";
+
+        if (!marker.entryId) {
+          return true;
+        }
+
+        const linkedEntry = entries[marker.entryId];
+
+        if (!linkedEntry) {
+          return false;
+        }
+
+        return (linkedEntry.visibility ?? "public") === "public";
       })
     );
-  }, [markers, isAdmin]);
+  }, [markers, entries, isAdmin]);
 
   const value = useMemo(
     () => ({
