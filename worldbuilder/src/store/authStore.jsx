@@ -7,7 +7,14 @@ import {
   onAuthStateChanged,
   updateProfile,
 } from "firebase/auth";
-import { collection, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { auth, db } from "../firebase";
 
 const AuthContext = createContext(null);
@@ -147,6 +154,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [allUserProfiles, setAllUserProfiles] = useState({});
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -167,6 +175,20 @@ export function AuthProvider({ children }) {
       }
 
       setAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
+      const next = {};
+
+      snapshot.forEach((docSnap) => {
+        next[docSnap.id] = docSnap.data();
+      });
+
+      setAllUserProfiles(next);
     });
 
     return () => unsubscribe();
@@ -277,6 +299,7 @@ export function AuthProvider({ children }) {
         setPersonalNotesEntry,
         pinEntry,
         unpinEntry,
+        allUserProfiles,
       }}
     >
       {children}

@@ -5,9 +5,11 @@ import { useAuth } from "../store/authStore.jsx";
 
 function HomePage() {
   const { entries, createEntry } = useWiki();
-  const { user, userProfile, activeCampaignId } = useAuth();
+  const { user, userProfile, activeCampaignId, setPlayerCharacterEntry } = useAuth();
   const [title, setTitle] = useState("");
   const [type, setType] = useState("location");
+  const [isCharacterPickerOpen, setIsCharacterPickerOpen] = useState(false);
+  const [characterSearch, setCharacterSearch] = useState("");
   const navigate = useNavigate();
 
   const entriesArray = useMemo(() => {
@@ -28,6 +30,31 @@ function HomePage() {
 
   const characterEntryId =
     userProfile?.playerCharacterEntryIds?.[activeCampaignId] ?? null;
+
+  const characterSearchResults = useMemo(() => {
+    const normalized = characterSearch.trim().toLowerCase();
+
+    if (!normalized) {
+      return entriesArray
+        .filter((entry) => entry.id !== personalNotesEntryId)
+        .slice(0, 8);
+    }
+
+    return entriesArray
+      .filter((entry) => {
+        if (entry.id === personalNotesEntryId) return false;
+
+        const titleMatch = (entry.title || "").toLowerCase().includes(normalized);
+        const typeMatch = (entry.type || "").toLowerCase().includes(normalized);
+        const tags = Array.isArray(entry.tags) ? entry.tags : [];
+        const tagMatch = tags.some((tag) =>
+          String(tag).toLowerCase().includes(normalized)
+        );
+
+        return titleMatch || typeMatch || tagMatch;
+      })
+      .slice(0, 8);
+  }, [entriesArray, characterSearch, personalNotesEntryId]);
 
   const lastEditedByYou = useMemo(() => {
     return entriesArray
@@ -82,6 +109,12 @@ function HomePage() {
     navigate(`/entry/${entry.id}`);
   };
 
+  const handleSelectCharacterEntry = async (entryId) => {
+    await setPlayerCharacterEntry(activeCampaignId, entryId);
+    setCharacterSearch("");
+    setIsCharacterPickerOpen(false);
+  };
+
   return (
     <div className="page home-dashboard">
       <section className="home-hero content-block">
@@ -123,13 +156,31 @@ function HomePage() {
               <p className="home-card__text">Campaign ID: {activeCampaignId}</p>
 
               <div className="block-actions">
-                {characterEntryId && (
+                {characterEntryId ? (
                   <Link
                     className="fantasy-button secondary"
                     to={`/entry/${characterEntryId}`}
                   >
                     My Character
                   </Link>
+                ) : (
+                  <button
+                    className="fantasy-button secondary"
+                    type="button"
+                    onClick={() => setIsCharacterPickerOpen((prev) => !prev)}
+                  >
+                    Set My Character
+                  </button>
+                )}
+
+                {characterEntryId && (
+                  <button
+                    className="fantasy-button secondary"
+                    type="button"
+                    onClick={() => setIsCharacterPickerOpen((prev) => !prev)}
+                  >
+                    Change My Character
+                  </button>
                 )}
 
                 {personalNotesEntryId && (
@@ -145,6 +196,40 @@ function HomePage() {
                   My Party
                 </Link>
               </div>
+
+              {isCharacterPickerOpen && (
+                <div className="home-character-picker">
+                  <label className="field-label">Select character entry</label>
+                  <input
+                    className="fantasy-input"
+                    type="text"
+                    value={characterSearch}
+                    onChange={(e) => setCharacterSearch(e.target.value)}
+                    placeholder="Search entries by title, type, or tag..."
+                  />
+
+                  <div className="home-character-picker__results">
+                    {characterSearchResults.length === 0 ? (
+                      <p className="block-placeholder">No matching entries found.</p>
+                    ) : (
+                      <ul className="entry-list">
+                        {characterSearchResults.map((entry) => (
+                          <li key={entry.id} className="entry-list-item">
+                            <button
+                              className="home-character-picker__result-button"
+                              type="button"
+                              onClick={() => handleSelectCharacterEntry(entry.id)}
+                            >
+                              <span className="entry-link">{entry.title}</span>
+                              <span className="entry-type-label">({entry.type})</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </section>

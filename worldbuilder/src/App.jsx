@@ -276,33 +276,101 @@ function EntryListPage() {
 
 function MyPartyPage() {
   const { entries } = useWiki();
-  const { userProfile, activeCampaignId } = useAuth();
+  const { allUserProfiles, activeCampaignId } = useAuth();
 
-  const partyCharacterIds = Object.values(userProfile?.playerCharacterEntryIds ?? {});
-  const partyEntries = partyCharacterIds
-    .map((entryId) => entries[entryId])
-    .filter(Boolean)
-    .filter((entry) => (entry.campaignId ?? activeCampaignId) === activeCampaignId);
+  const partyMembers = useMemo(() => {
+    return Object.values(allUserProfiles)
+      .filter((profile) => {
+        const campaignIds = profile.campaignIds ?? [];
+        return campaignIds.includes(activeCampaignId);
+      })
+      .map((profile) => {
+        const characterEntryId =
+          profile.playerCharacterEntryIds?.[activeCampaignId] ?? null;
+
+        const characterEntry = characterEntryId ? entries[characterEntryId] : null;
+
+        return {
+          uid: profile.uid,
+          displayName: profile.displayName || "Adventurer",
+          photoURL: profile.photoURL || "",
+          characterEntryId,
+          characterEntry,
+        };
+      })
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }, [allUserProfiles, activeCampaignId, entries]);
 
   return (
     <div className="page">
       <h2 className="page-title">My Party</h2>
 
-      {partyEntries.length === 0 && (
-        <p>No party characters linked yet.</p>
+      <p className="home-card__text" style={{ marginBottom: "1rem" }}>
+        All players currently linked to the active campaign.
+      </p>
+
+      {partyMembers.length === 0 && (
+        <p>No party members found for this campaign yet.</p>
       )}
 
-      {partyEntries.length > 0 && (
-        <ul className="entry-list">
-          {partyEntries.map((entry) => (
-            <li key={entry.id} className="entry-list-item">
-              <Link to={`/entry/${entry.id}`} className="entry-link">
-                {entry.title}
-              </Link>
-              <span className="entry-type-label">({entry.type})</span>
-            </li>
+      {partyMembers.length > 0 && (
+        <div className="party-grid">
+          {partyMembers.map((member) => (
+            <section key={member.uid} className="content-block party-card">
+              <div className="party-card__header">
+                {member.photoURL ? (
+                  <img
+                    src={member.photoURL}
+                    alt={member.displayName}
+                    className="party-card__avatar"
+                  />
+                ) : (
+                  <div className="party-card__avatar party-card__avatar--placeholder">
+                    {member.displayName.slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+
+                <div className="party-card__identity">
+                  <h3 className="party-card__name">{member.displayName}</h3>
+                  <p className="party-card__subtitle">Campaign member</p>
+                </div>
+              </div>
+
+              <div className="party-card__body">
+                {member.characterEntry ? (
+                  <>
+                    <p className="party-card__label">Player Character</p>
+                    <Link
+                      to={`/entry/${member.characterEntry.id}`}
+                      className="entry-link"
+                    >
+                      {member.characterEntry.title}
+                    </Link>
+                    <span className="entry-type-label">
+                      ({member.characterEntry.type})
+                    </span>
+
+                    <div className="block-actions">
+                      <Link
+                        className="fantasy-button secondary"
+                        to={`/entry/${member.characterEntry.id}`}
+                      >
+                        Open Character
+                      </Link>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="party-card__label">Player Character</p>
+                    <p className="home-card__text">
+                      No character linked yet.
+                    </p>
+                  </>
+                )}
+              </div>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
