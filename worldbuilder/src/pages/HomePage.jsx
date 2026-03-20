@@ -1,16 +1,29 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useWiki } from "../store/wikiStore.jsx";
 import { useAuth } from "../store/authStore.jsx";
 
 function HomePage() {
   const { entries, createEntry } = useWiki();
-  const { user, userProfile, activeCampaignId, setPlayerCharacterEntry } = useAuth();
+  const {
+    user,
+    userProfile,
+    activeCampaignId,
+    activeCampaign,
+    isAdmin,
+    setPlayerCharacterEntry,
+    unpinEntry,
+    updateCampaign,
+  } = useAuth();
+
   const [title, setTitle] = useState("");
   const [type, setType] = useState("location");
   const [isCharacterPickerOpen, setIsCharacterPickerOpen] = useState(false);
   const [characterSearch, setCharacterSearch] = useState("");
   const navigate = useNavigate();
+  const [campaignNameInput, setCampaignNameInput] = useState("");
+  const [sessionDateInput, setSessionDateInput] = useState("");
+  const [sharedLinksInput, setSharedLinksInput] = useState("");
 
   const entriesArray = useMemo(() => {
     return Object.values(entries).sort((a, b) => {
@@ -67,14 +80,28 @@ function HomePage() {
   }, [entriesArray]);
 
   const sessionInfo = useMemo(() => {
-    const targetDate = new Date("2026-03-28T18:00:00");
+    if (!activeCampaign?.sessionDate) {
+      return {
+        label: "No session scheduled",
+        detail: "Add a session date to your campaign data.",
+      };
+    }
+
+    const targetDate = new Date(activeCampaign.sessionDate);
     const now = new Date();
     const diffMs = targetDate.getTime() - now.getTime();
+
+    if (Number.isNaN(targetDate.getTime())) {
+      return {
+        label: "Invalid session date",
+        detail: "Please update the campaign session date.",
+      };
+    }
 
     if (diffMs <= 0) {
       return {
         label: "Session day is here",
-        detail: "Prepare your dice and spells.",
+        detail: targetDate.toLocaleString(),
       };
     }
 
@@ -85,15 +112,21 @@ function HomePage() {
 
     return {
       label: `${days}d ${hours}h until next session`,
-      detail: "Saturday, 28 March 2026 · 18:00",
+      detail: targetDate.toLocaleString(),
     };
-  }, []);
+  }, [activeCampaign]);
 
-  const sharedLinks = [
-    { label: "DnDBeyond Campaign", url: "#" },
-    { label: "Character Sheets", url: "#" },
-    { label: "Encounter Builder", url: "#" },
-  ];
+  const sharedLinks = activeCampaign?.sharedLinks ?? [];
+
+  useEffect(() => {
+    setCampaignNameInput(activeCampaign?.name ?? "");
+    setSessionDateInput(activeCampaign?.sessionDate ?? "");
+    setSharedLinksInput(
+      (activeCampaign?.sharedLinks ?? [])
+        .map((link) => `${link.label}|${link.url}`)
+        .join("\n")
+    );
+  }, [activeCampaign]);
 
   const handleCreateEntry = async () => {
     const trimmed = title.trim();
@@ -115,12 +148,35 @@ function HomePage() {
     setIsCharacterPickerOpen(false);
   };
 
+  const handleSaveCampaignSettings = async () => {
+    const parsedLinks = sharedLinksInput
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [label, ...urlParts] = line.split("|");
+        return {
+          label: (label ?? "").trim(),
+          url: urlParts.join("|").trim(),
+        };
+      })
+      .filter((link) => link.label && link.url);
+
+    await updateCampaign(activeCampaignId, {
+      name: campaignNameInput.trim() || "Unnamed Campaign",
+      sessionDate: sessionDateInput.trim() || null,
+      sharedLinks: parsedLinks,
+    });
+  };
+  
   return (
     <div className="page home-dashboard">
       <section className="home-hero content-block">
         <div>
           <p className="home-eyebrow">Active Campaign</p>
-          <h2 className="home-hero__title">Zerinthra</h2>
+          <h2 className="home-hero__title">
+            {activeCampaign?.name || "Unknown Campaign"}
+          </h2>
           <p className="home-hero__text">
             A shared campaign hub for characters, places, quests, lore, and
             private notes.
@@ -273,6 +329,57 @@ function HomePage() {
         </section>
       </div>
 
+      {isAdmin && (
+        <section className="content-block home-card">
+          <p className="home-card__eyebrow">Admin</p>
+          <h3 className="home-card__title">Campaign Settings</h3>
+          <p className="home-card__text">
+            Manage the active campaign name, next session date, and shared links.
+          </p>
+
+          <div className="block-edit-fields">
+            <label className="field-label">Campaign Name</label>
+            <input
+              className="fantasy-input"
+              type="text"
+              value={campaignNameInput}
+              onChange={(e) => setCampaignNameInput(e.target.value)}
+              placeholder="Zerinthra"
+            />
+
+            <label className="field-label">Next Session Date</label>
+            <input
+              className="fantasy-input"
+              type="datetime-local"
+              value={sessionDateInput}
+              onChange={(e) => setSessionDateInput(e.target.value)}
+            />
+
+            <label className="field-label">Shared Links</label>
+            <textarea
+              className="fantasy-input home-admin-links-input"
+              value={sharedLinksInput}
+              onChange={(e) => setSharedLinksInput(e.target.value)}
+              placeholder={`DnDBeyond Campaign|https://...\nCharacter Sheets|https://...`}
+            />
+          </div>
+
+          <p className="home-card__text">
+            Enter one link per line in the format: <strong>Label|URL</strong>
+          </p>
+
+          <div className="block-actions">
+            <button
+              className="fantasy-button"
+              type="button"
+              onClick={handleSaveCampaignSettings}
+            >
+              Save Campaign Settings
+            </button>
+          </div>
+        </section>
+      )}
+
       <div className="home-grid home-grid--middle">
         <section className="content-block home-card">
           <p className="home-card__eyebrow">Quick Access</p>
@@ -286,11 +393,21 @@ function HomePage() {
           ) : (
             <ul className="entry-list">
               {pinnedEntries.map((entry) => (
-                <li key={entry.id} className="entry-list-item">
-                  <Link to={`/entry/${entry.id}`} className="entry-link">
-                    {entry.title}
-                  </Link>
-                  <span className="entry-type-label">({entry.type})</span>
+                <li key={entry.id} className="entry-list-item home-pinned-item">
+                  <div className="home-pinned-item__main">
+                    <Link to={`/entry/${entry.id}`} className="entry-link">
+                      {entry.title}
+                    </Link>
+                    <span className="entry-type-label">({entry.type})</span>
+                  </div>
+
+                  <button
+                    className="fantasy-button secondary home-pinned-item__button"
+                    type="button"
+                    onClick={() => unpinEntry(entry.id)}
+                  >
+                    Remove
+                  </button>
                 </li>
               ))}
             </ul>
@@ -345,17 +462,21 @@ function HomePage() {
         </div>
 
         <div className="home-footer__links">
-          {sharedLinks.map((link) => (
-            <a
-              key={link.label}
-              className="home-footer__link"
-              href={link.url}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {link.label}
-            </a>
-          ))}
+          {sharedLinks.length === 0 ? (
+            <p className="home-card__text">No shared links yet.</p>
+          ) : (
+            sharedLinks.map((link) => (
+              <a
+                key={link.label}
+                className="home-footer__link"
+                href={link.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {link.label}
+              </a>
+            ))
+          )}
         </div>
       </footer>
     </div>

@@ -14,6 +14,7 @@ import {
   onSnapshot,
   setDoc,
   serverTimestamp,
+  updateDoc,
 } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
@@ -29,8 +30,12 @@ async function ensureDefaultCampaign() {
       id: DEFAULT_CAMPAIGN_ID,
       name: "Zerinthra",
       description: "Main campaign",
-      sessionDate: null,
-      sharedLinks: [],
+      sessionDate: "2026-03-28T18:00:00",
+      sharedLinks: [
+        { label: "DnDBeyond Campaign", url: "#" },
+        { label: "Character Sheets", url: "#" },
+        { label: "Encounter Builder", url: "#" },
+      ],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -155,6 +160,7 @@ export function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [allUserProfiles, setAllUserProfiles] = useState({});
+  const [campaigns, setCampaigns] = useState({});
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -189,6 +195,20 @@ export function AuthProvider({ children }) {
       });
 
       setAllUserProfiles(next);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "campaigns"), (snapshot) => {
+      const next = {};
+
+      snapshot.forEach((docSnap) => {
+        next[docSnap.id] = docSnap.data();
+      });
+
+      setCampaigns(next);
     });
 
     return () => unsubscribe();
@@ -281,6 +301,15 @@ export function AuthProvider({ children }) {
     });
   };
 
+  const updateCampaign = async (campaignId, updates) => {
+    const campaignRef = doc(db, "campaigns", campaignId);
+
+    await updateDoc(campaignRef, {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    });
+  };
+
   const isAdmin = userProfile?.role === "admin";
 
   return (
@@ -288,6 +317,9 @@ export function AuthProvider({ children }) {
       value={{
         user,
         userProfile,
+        allUserProfiles,
+        campaigns,
+        activeCampaign: campaigns[userProfile?.activeCampaignId ?? DEFAULT_CAMPAIGN_ID] ?? null,
         authLoading,
         signup,
         login,
@@ -299,7 +331,7 @@ export function AuthProvider({ children }) {
         setPersonalNotesEntry,
         pinEntry,
         unpinEntry,
-        allUserProfiles,
+        updateCampaign,
       }}
     >
       {children}

@@ -872,3 +872,29 @@ textarea.fantasy-input {
   font: inherit;
   color: inherit;
 }
+
+.home-pinned-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.home-pinned-item__main {
+  min-width: 0;
+}
+
+.home-pinned-item__button {
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .home-pinned-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.home-admin-links-input {
+  min-height: 140px;
+}

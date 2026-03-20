@@ -9,7 +9,7 @@ import MapBlock from "../components/MapBlock.jsx";
 
 
 function EntryPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, userProfile, pinEntry, unpinEntry } = useAuth();
   const { entryId } = useParams();
   const navigate = useNavigate();
   const {
@@ -25,6 +25,8 @@ function EntryPage() {
 
   const [mode, setMode] = useState("view");
   const entry = entries[entryId];
+  const pinnedEntryIds = userProfile?.pinnedEntryIds ?? [];
+  const isPinned = pinnedEntryIds.includes(entryId);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const entryBlocks = useMemo(() => {
@@ -77,6 +79,15 @@ function EntryPage() {
     if (!confirmed) return;
     await deleteEntry(entryId);
     navigate("/");
+  };
+
+  const handleTogglePinned = async () => {
+    if (isPinned) {
+      await unpinEntry(entryId);
+      return;
+    }
+
+    await pinEntry(entryId);
   };
 
 return (
@@ -179,13 +190,23 @@ return (
                   <p className="entry-type">{entry.type}</p>
                 </div>
 
-                <button
-                  className="fantasy-button"
-                  type="button"
-                  onClick={() => setMode("edit")}
-                >
-                  Edit Entry
-                </button>
+                <div className="block-actions">
+                  <button
+                    className="fantasy-button secondary"
+                    type="button"
+                    onClick={handleTogglePinned}
+                  >
+                    {isPinned ? "Unpin Entry" : "Pin Entry"}
+                  </button>
+
+                  <button
+                    className="fantasy-button"
+                    type="button"
+                    onClick={() => setMode("edit")}
+                  >
+                    Edit Entry
+                  </button>
+                </div>
               </div>
             </>
           )}
