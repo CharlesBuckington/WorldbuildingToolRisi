@@ -250,22 +250,69 @@ function ProtectedRoute({ user, children }) {
 
 function EntryListPage() {
   const { entries } = useWiki();
-  const entriesArray = Object.values(entries);
+  const [search, setSearch] = useState("");
+  const entriesArray = useMemo(() => {
+    const normalized = search.trim().toLowerCase();
+
+    const allEntries = Object.values(entries).sort((a, b) => {
+      const aTitle = (a.title || "").toLowerCase();
+      const bTitle = (b.title || "").toLowerCase();
+      return aTitle.localeCompare(bTitle);
+    });
+
+    if (!normalized) {
+      return allEntries;
+    }
+
+    return allEntries.filter((entry) => {
+      const titleMatch = (entry.title || "").toLowerCase().includes(normalized);
+      const typeMatch = (entry.type || "").toLowerCase().includes(normalized);
+      const tags = Array.isArray(entry.tags) ? entry.tags : [];
+      const tagMatch = tags.some((tag) =>
+        String(tag).toLowerCase().includes(normalized)
+      );
+
+      return titleMatch || typeMatch || tagMatch;
+    });
+  }, [entries, search]);
 
   return (
     <div className="page">
       <h2 className="page-title">All Entries</h2>
 
-      {entriesArray.length === 0 && <p>No entries yet.</p>}
+      <div className="page-toolbar">
+        <label className="field-label">Search entries</label>
+        <input
+          className="fantasy-input"
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by title, type, or tag..."
+        />
+      </div>
+
+      {entriesArray.length === 0 && <p>No matching entries found.</p>}
 
       {entriesArray.length > 0 && (
         <ul className="entry-list">
           {entriesArray.map((entry) => (
             <li key={entry.id} className="entry-list-item">
-              <Link to={`/entry/${entry.id}`} className="entry-link">
-                {entry.title}
-              </Link>
-              <span className="entry-type-label">({entry.type})</span>
+              <div className="entry-list-item__main">
+                <Link to={`/entry/${entry.id}`} className="entry-link">
+                  {entry.title}
+                </Link>
+                <span className="entry-type-label">({entry.type})</span>
+              </div>
+
+              {(entry.tags ?? []).length > 0 && (
+                <div className="entry-tags entry-tags--list">
+                  {(entry.tags ?? []).map((tag) => (
+                    <span key={tag} className="entry-tag">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </li>
           ))}
         </ul>

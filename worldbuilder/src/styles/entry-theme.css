@@ -898,3 +898,57 @@ textarea.fantasy-input {
 .home-admin-links-input {
   min-height: 140px;
 }
+
+.entry-tags-editor {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.entry-tags-editor__input-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.entry-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.entry-tags--view {
+  margin-top: 0.65rem;
+}
+
+.entry-tags--list {
+  margin-top: 0.6rem;
+}
+
+.entry-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(176, 138, 74, 0.14);
+  border: 1px solid rgba(176, 138, 74, 0.22);
+  color: var(--parchment);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.entry-tag--removable {
+  cursor: pointer;
+  font: inherit;
+}
+
+.entry-list-item__main {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .entry-tags-editor__input-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -25,6 +25,7 @@ function EntryPage() {
 
   const [mode, setMode] = useState("view");
   const entry = entries[entryId];
+  const [tagInput, setTagInput] = useState("");
   const pinnedEntryIds = userProfile?.pinnedEntryIds ?? [];
   const isPinned = pinnedEntryIds.includes(entryId);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -90,6 +91,37 @@ function EntryPage() {
     await pinEntry(entryId);
   };
 
+  const handleAddTag = async () => {
+    const normalized = tagInput.trim().toLowerCase();
+    if (!normalized) return;
+
+    const currentTags = Array.isArray(entry.tags) ? entry.tags : [];
+    if (currentTags.includes(normalized)) {
+      setTagInput("");
+      return;
+    }
+
+    await updateEntry(entryId, {
+      tags: [...currentTags, normalized],
+    });
+
+    setTagInput("");
+  };
+
+  const handleRemoveTag = async (tagToRemove) => {
+    const currentTags = Array.isArray(entry.tags) ? entry.tags : [];
+
+    await updateEntry(entryId, {
+      tags: currentTags.filter((tag) => tag !== tagToRemove),
+    });
+  };
+
+  const handleTagInputKeyDown = async (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    await handleAddTag();
+  };
+  
 return (
   <div className={`page entry-layout entry-layout--${mode}`}>
     {mode === "edit" && (
@@ -168,19 +200,57 @@ return (
                 <option value="note">Note</option>
               </select>
 
+              <label className="field-label">Tags</label>
+              <div className="entry-tags-editor">
+                <div className="entry-tags-editor__input-row">
+                  <input
+                    className="fantasy-input"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={handleTagInputKeyDown}
+                    placeholder="Add tag, e.g. merchant"
+                  />
+                  <button
+                    className="fantasy-button secondary"
+                    type="button"
+                    onClick={handleAddTag}
+                  >
+                    Add Tag
+                  </button>
+                </div>
+
+                <div className="entry-tags">
+                  {(entry.tags ?? []).length === 0 ? (
+                    <p className="block-placeholder">No tags yet.</p>
+                  ) : (
+                    (entry.tags ?? []).map((tag) => (
+                      <button
+                        key={tag}
+                        className="entry-tag entry-tag--removable"
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        title={`Remove tag "${tag}"`}
+                      >
+                        #{tag} ×
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
               {isAdmin && (
-              <>
-                <label className="field-label">Visibility</label>
-                <select
-                  className="fantasy-input"
-                  value={entry.visibility || "public"}
-                  onChange={(e) => updateEntry(entryId, { visibility: e.target.value })}
-                >
-                  <option value="public">Public</option>
-                  <option value="admin">Admin Only</option>
-                </select>
-              </>
-            )}
+                <>
+                  <label className="field-label">Visibility</label>
+                  <select
+                    className="fantasy-input"
+                    value={entry.visibility || "public"}
+                    onChange={(e) => updateEntry(entryId, { visibility: e.target.value })}
+                  >
+                    <option value="public">Public</option>
+                    <option value="admin">Admin Only</option>
+                  </select>
+                </>
+              )}
             </>
           ) : (
             <>
@@ -188,6 +258,16 @@ return (
                 <div>
                   <h1 className="entry-title">{entry.title}</h1>
                   <p className="entry-type">{entry.type}</p>
+
+                  {(entry.tags ?? []).length > 0 && (
+                    <div className="entry-tags entry-tags--view">
+                      {(entry.tags ?? []).map((tag) => (
+                        <span key={tag} className="entry-tag">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="block-actions">

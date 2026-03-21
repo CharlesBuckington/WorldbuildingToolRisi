@@ -1,6 +1,11 @@
-- Fullscreen
-- media Query
-- Hide Markers pointing to admin Only entries
+- Account customization
+- "CharacterDescription" Block
+- Add Pins and markers in fullscreen mode
+- Collapse sidebar/ Expand sidebar buttons should be above everything, not off to the side => dont take up space
+- Collapse/ Hide things in homepage + max size of "Recent Entries" and "Pinned entries" until becomes scrollable
+
+- campaign ownership
+- "Joining a campaign"
 
 dungeon_master@gmx.de
 Dungeon1234
