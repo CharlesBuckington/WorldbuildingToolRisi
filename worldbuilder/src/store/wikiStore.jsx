@@ -124,6 +124,7 @@ export function WikiProvider({ children }) {
       width: partial.width ?? null,
       height: partial.height ?? null,
       caption: partial.caption ?? "",
+      fields: partial.fields ?? null,
     });
   };
 

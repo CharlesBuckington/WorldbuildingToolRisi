@@ -6,7 +6,7 @@ import { useAuth } from "../store/authStore.jsx";
 import TextBlock from "../components/TextBlock.jsx";
 import ImageBlock from "../components/ImageBlock.jsx";
 import MapBlock from "../components/MapBlock.jsx";
-
+import CharacterProfileBlock from "../components/CharacterProfileBlock.jsx";
 
 function EntryPage() {
   const { isAdmin, userProfile, pinEntry, unpinEntry } = useAuth();
@@ -75,6 +75,25 @@ function EntryPage() {
     });
   };
 
+  const handleAddCharacterProfileBlock = async () => {
+    await createBlock({
+      entryId,
+      type: "characterProfile",
+      order: entryBlocks.length,
+      fields: {
+        name: "",
+        faction: "",
+        race: "",
+        gender: "",
+        occupation: "",
+        height: "",
+        weight: "",
+        age: "",
+        residence: "",
+      },
+    });
+  };
+
   const handleDeleteEntry = async () => {
     const confirmed = window.confirm(`Delete "${entry.title}"?`);
     if (!confirmed) return;
@@ -124,54 +143,50 @@ function EntryPage() {
   
 return (
   <div className={`page entry-layout entry-layout--${mode}`}>
-    {mode === "edit" && (
-      <aside className={`entry-sidebar ${isSidebarOpen ? "is-open" : "is-collapsed"}`}>
+    {mode === "edit" && isSidebarOpen && (
+      <aside className="entry-sidebar is-open">
         <div className="entry-sidebar__section">
+          <h3 className="entry-sidebar__title">Editor</h3>
+
           <button
             className="fantasy-button secondary sidebar-full"
             type="button"
-            onClick={() => setIsSidebarOpen((prev) => !prev)}
+            onClick={() => setMode("view")}
           >
-            {isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+            Switch to View Mode
           </button>
         </div>
 
-        {isSidebarOpen && (
-          <>
-            <div className="entry-sidebar__section">
-              <h3 className="entry-sidebar__title">Editor</h3>
+        <div className="entry-sidebar__section">
+          <h3 className="entry-sidebar__title">Entry</h3>
 
-              <button
-                className="fantasy-button secondary sidebar-full"
-                type="button"
-                onClick={() => setMode("view")}
-              >
-                Switch to View Mode
-              </button>
-            </div>
+          <button className="fantasy-button sidebar-full" onClick={handleAddTextBlock}>
+            + Add Text
+          </button>
+          <button className="fantasy-button sidebar-full" onClick={handleAddImageBlock}>
+            + Add Image
+          </button>
+          <button className="fantasy-button sidebar-full" onClick={handleAddMapBlock}>
+            + Add Map
+          </button>
+          <button
+            className="fantasy-button sidebar-full"
+            onClick={handleAddCharacterProfileBlock}
+          >
+            + Add Character Profile
+          </button>
+        </div>
 
-            <div className="entry-sidebar__section">
-              <h3 className="entry-sidebar__title">Entry</h3>
-
-              <button className="fantasy-button sidebar-full" onClick={handleAddTextBlock}>
-                + Add Text
-              </button>
-              <button className="fantasy-button sidebar-full" onClick={handleAddImageBlock}>
-                + Add Image
-              </button>
-              <button className="fantasy-button sidebar-full" onClick={handleAddMapBlock}>
-                + Add Map
-              </button>
-            </div>
-
-            <div className="entry-sidebar__section">
-              <h3 className="entry-sidebar__title">Danger Zone</h3>
-              <button className="fantasy-button danger sidebar-full" type="button" onClick={handleDeleteEntry}>
-                Delete Entry
-              </button>
-            </div>
-          </>
-        )}
+        <div className="entry-sidebar__section">
+          <h3 className="entry-sidebar__title">Danger Zone</h3>
+          <button
+            className="fantasy-button danger sidebar-full"
+            type="button"
+            onClick={handleDeleteEntry}
+          >
+            Delete Entry
+          </button>
+        </div>
       </aside>
     )}
 
@@ -180,6 +195,16 @@ return (
         <div className="entry-header__main">
           {mode === "edit" ? (
             <>
+              <div className="entry-edit-topbar">
+                <button
+                  className="fantasy-button secondary"
+                  type="button"
+                  onClick={() => setIsSidebarOpen((prev) => !prev)}
+                >
+                  {isSidebarOpen ? "Hide Editor Sidebar" : "Show Editor Sidebar"}
+                </button>
+              </div>
+
               <label className="field-label">Title</label>
               <input
                 className="fantasy-input fantasy-input--title"
@@ -337,6 +362,21 @@ return (
                 block={block}
                 mode={mode}
                 markers={blockMarkers}
+                onDelete={() => deleteBlock(block.id)}
+                canMoveUp={canMoveUp}
+                canMoveDown={canMoveDown}
+                onMoveUp={() => moveBlock(entryId, block.id, "up")}
+                onMoveDown={() => moveBlock(entryId, block.id, "down")}
+              />
+            );
+          }
+
+          if (block.type === "characterProfile") {
+            return (
+              <CharacterProfileBlock
+                key={block.id}
+                block={block}
+                mode={mode}
                 onDelete={() => deleteBlock(block.id)}
                 canMoveUp={canMoveUp}
                 canMoveDown={canMoveDown}
