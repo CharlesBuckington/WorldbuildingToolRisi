@@ -42,11 +42,16 @@ async function ensureDefaultCampaign() {
   }
 }
 
-async function createPersonalNotesEntry(firebaseUser, campaignId) {
+async function createPersonalNotesEntry(firebaseUser, campaignId, preferredDisplayName = "") {
   const entryRef = doc(collection(db, "entries"));
+  const resolvedDisplayName =
+    preferredDisplayName.trim() ||
+    firebaseUser.displayName ||
+    "Adventurer";
+
   const entryData = {
     id: entryRef.id,
-    title: `${firebaseUser.displayName || "Adventurer"} - Personal Notes`,
+    title: `${resolvedDisplayName}'s Personal Notes`,
     type: "note",
     tags: ["note", "personal"],
     campaignId,
@@ -62,23 +67,27 @@ async function createPersonalNotesEntry(firebaseUser, campaignId) {
   return entryData.id;
 }
 
-async function ensureUserProfile(firebaseUser) {
+async function ensureUserProfile(firebaseUser, preferredDisplayName = "") {
   await ensureDefaultCampaign();
 
   const userRef = doc(db, "users", firebaseUser.uid);
   const userSnap = await getDoc(userRef);
 
-  const displayName = firebaseUser.displayName || "Adventurer";
+  const resolvedDisplayName =
+    preferredDisplayName.trim() ||
+    firebaseUser.displayName ||
+    "Adventurer";
 
   if (!userSnap.exists()) {
     const personalNotesEntryId = await createPersonalNotesEntry(
       firebaseUser,
-      DEFAULT_CAMPAIGN_ID
+      DEFAULT_CAMPAIGN_ID,
+      resolvedDisplayName
     );
 
     const newProfile = {
       uid: firebaseUser.uid,
-      displayName,
+      displayName: resolvedDisplayName,
       role: "user",
       photoURL: "",
       campaignIds: [DEFAULT_CAMPAIGN_ID],
@@ -127,15 +136,19 @@ async function ensureUserProfile(firebaseUser) {
     updates.photoURL = "";
   }
 
-  if (!existingProfile.displayName) {
-    updates.displayName = displayName;
+  if (
+    !existingProfile.displayName ||
+    (existingProfile.displayName === "Adventurer" && resolvedDisplayName !== "Adventurer")
+  ) {
+    updates.displayName = resolvedDisplayName;
   }
 
   const notesMap = existingProfile.personalNotesEntryIds ?? {};
   if (!notesMap[DEFAULT_CAMPAIGN_ID]) {
     const personalNotesEntryId = await createPersonalNotesEntry(
       firebaseUser,
-      DEFAULT_CAMPAIGN_ID
+      DEFAULT_CAMPAIGN_ID,
+      resolvedDisplayName
     );
 
     updates.personalNotesEntryIds = {
@@ -214,17 +227,21 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  const signup = async ({ email, password, displayName }) => {
-    const result = await createUserWithEmailAndPassword(auth, email, password);
+const signup = async ({ email, password, displayName }) => {
+  const trimmedDisplayName = displayName.trim();
+  const result = await createUserWithEmailAndPassword(auth, email, password);
 
-    if (displayName.trim()) {
-      await updateProfile(result.user, {
-        displayName: displayName.trim(),
-      });
-    }
+  if (trimmedDisplayName) {
+    await updateProfile(result.user, {
+      displayName: trimmedDisplayName,
+    });
+  }
 
-    return result.user;
-  };
+  const profile = await ensureUserProfile(result.user, trimmedDisplayName);
+  setUserProfile(profile);
+
+  return result.user;
+};
 
   const login = async ({ email, password }) => {
     const result = await signInWithEmailAndPassword(auth, email, password);
@@ -235,24 +252,44 @@ export function AuthProvider({ children }) {
     await signOut(auth);
   };
 
-  const updateUserProfile = async (updates) => {
-    if (!user) return;
+const updateUserProfile = async (updates) => {
+  if (!user) return;
 
-    const userRef = doc(db, "users", user.uid);
-    await setDoc(
-      userRef,
-      {
-        ...updates,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-
-    setUserProfile((prev) => ({
-      ...prev,
-      ...updates,
-    }));
+  const nextProfile = {
+    ...(userProfile ?? {}),
+    ...updates,
   };
+
+  const userRef = doc(db, "users", user.uid);
+
+  await setDoc(
+    userRef,
+    {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  if (typeof updates.displayName === "string") {
+    const trimmedDisplayName = updates.displayName.trim() || "Adventurer";
+    const personalNotesEntryIds = nextProfile.personalNotesEntryIds ?? {};
+
+    await Promise.all(
+      Object.values(personalNotesEntryIds).map(async (notesEntryId) => {
+        if (!notesEntryId) return;
+
+        await updateDoc(doc(db, "entries", notesEntryId), {
+          title: `${trimmedDisplayName}'s Personal Notes`,
+          updatedAt: serverTimestamp(),
+          updatedBy: user.uid,
+        });
+      })
+    );
+  }
+
+  setUserProfile(nextProfile);
+};
 
   const setPlayerCharacterEntry = async (campaignId, entryId) => {
     if (!user) return;

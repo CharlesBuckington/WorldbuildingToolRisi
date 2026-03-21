@@ -36,6 +36,30 @@ function EntryPage() {
       .sort((a, b) => a.order - b.order);
   }, [blocks, entryId]);
 
+  const availableTagSuggestions = useMemo(() => {
+    const currentTags = new Set((entry.tags ?? []).map((tag) => String(tag).toLowerCase()));
+    const normalizedInput = tagInput.trim().toLowerCase();
+
+    const allTags = new Set();
+
+    Object.values(entries).forEach((wikiEntry) => {
+      const wikiTags = Array.isArray(wikiEntry.tags) ? wikiEntry.tags : [];
+      wikiTags.forEach((tag) => {
+        const normalizedTag = String(tag).trim().toLowerCase();
+        if (!normalizedTag) return;
+        if (currentTags.has(normalizedTag)) return;
+
+        if (!normalizedInput || normalizedTag.includes(normalizedInput)) {
+          allTags.add(normalizedTag);
+        }
+      });
+    });
+
+    return Array.from(allTags)
+      .sort((a, b) => a.localeCompare(b))
+      .slice(0, 8);
+  }, [entries, entry.tags, tagInput]);
+
   if (!entry) {
     return (
       <div className="page">
@@ -141,6 +165,17 @@ function EntryPage() {
     await handleAddTag();
   };
   
+  const handleAddSuggestedTag = async (tag) => {
+    const currentTags = Array.isArray(entry.tags) ? entry.tags : [];
+    if (currentTags.includes(tag)) return;
+
+    await updateEntry(entryId, {
+      tags: [...currentTags, tag],
+    });
+
+    setTagInput("");
+  };
+
 return (
   <div className={`page entry-layout entry-layout--${mode}`}>
     {mode === "edit" && isSidebarOpen && (
@@ -261,6 +296,24 @@ return (
                     ))
                   )}
                 </div>
+
+                {availableTagSuggestions.length > 0 && (
+                  <div className="entry-tag-suggestions">
+                    <div className="entry-tag-suggestions__label">Suggestions</div>
+                    <div className="entry-tags">
+                      {availableTagSuggestions.map((tag) => (
+                        <button
+                          key={tag}
+                          className="entry-tag entry-tag--suggestion"
+                          type="button"
+                          onClick={() => handleAddSuggestedTag(tag)}
+                        >
+                          #{tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {isAdmin && (

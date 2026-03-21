@@ -160,6 +160,21 @@ function MapScrollZoomGuard({ bounds }) {
   return null;
 }
 
+function getClampedMenuPosition(screenX, screenY) {
+  const MENU_MARGIN = 12;
+  const MENU_OFFSET = 10;
+  const MENU_WIDTH = 320;
+  const MENU_HEIGHT = 420;
+
+  const maxLeft = window.innerWidth - MENU_WIDTH - MENU_MARGIN;
+  const maxTop = window.innerHeight - MENU_HEIGHT - MENU_MARGIN;
+
+  return {
+    left: Math.max(MENU_MARGIN, Math.min(screenX + MENU_OFFSET, maxLeft)),
+    top: Math.max(MENU_MARGIN, Math.min(screenY + MENU_OFFSET, maxTop)),
+  };
+}
+
 function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMoveUp, onMoveDown }) {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -329,6 +344,11 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
   const renderMarkerMenu = (menuState, isEditing) => {
     if (!menuState || mode !== "edit") return null;
 
+    const { left, top } = getClampedMenuPosition(
+      menuState.screenX,
+      menuState.screenY
+    );
+
     return (
       <div className="marker-menu-backdrop" onClick={() => {
         if (isEditing) {
@@ -340,8 +360,8 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
         <div
           className="marker-menu"
           style={{
-            top: menuState.screenY,
-            left: menuState.screenX,
+            top,
+            left,
           }}
           onClick={(e) => e.stopPropagation()}
         >

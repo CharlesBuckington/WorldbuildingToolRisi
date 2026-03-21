@@ -609,7 +609,6 @@ textarea.fantasy-input {
 .marker-menu {
   position: fixed;
   z-index: 1000;
-  transform: translate(10px, 10px);
   min-width: 280px;
   max-width: 320px;
   background: linear-gradient(180deg, #2c241c 0%, #1f1914 100%);
@@ -1065,4 +1064,83 @@ textarea.fantasy-input {
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+.entry-filter-panel {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.entry-filter-group {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.entry-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.entry-filter-chip {
+  appearance: none;
+  border: 1px solid rgba(203, 184, 146, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.entry-filter-chip:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+}
+
+.entry-filter-chip.is-active {
+  background: rgba(176, 138, 74, 0.16);
+  border-color: rgba(176, 138, 74, 0.42);
+  color: var(--parchment);
+}
+
+.entry-filter-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.entry-filter-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  color: var(--text-muted);
+}
+
+.entry-tag-suggestions {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.entry-tag-suggestions__label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--parchment-dark);
+}
+
+.entry-tag--suggestion {
+  cursor: pointer;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.entry-tag--suggestion:hover {
+  background: rgba(176, 138, 74, 0.18);
+  border-color: rgba(176, 138, 74, 0.32);
 }
