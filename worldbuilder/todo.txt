@@ -2,13 +2,15 @@
 - "CharacterDescription" Block
 - Add Pins and markers in fullscreen mode
 - Collapse sidebar/ Expand sidebar buttons should be above everything, not off to the side => dont take up space
-- Collapse/ Hide things in homepage + max size of "Recent Entries" and "Pinned entries" until becomes scrollable
+- Collapse/ Hide things in homepage + max size of "Recent Entries" "Last edited by you" and "Pinned entries" until becomes scrollable
+- Autocomplete tags for already exisiting ones
 
 - campaign ownership
 - "Joining a campaign"
 
-dungeon_master@gmx.de
-Dungeon1234
-
 https://worldbuilderrisi.web.app/
 #firebase deploy --only hosting
+
+
+
+https://pbs.twimg.com/media/F8HVIUnWIAAzP60.jpg

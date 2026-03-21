@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import HomePage from "./pages/HomePage.jsx";
 import EntryPage from "./pages/EntryPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
 import { useWiki } from "./store/wikiStore.jsx";
 import { useAuth } from "./store/authStore.jsx";
 
@@ -102,6 +103,15 @@ function App() {
               element={
                 <ProtectedRoute user={user}>
                   <MyPartyPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute user={user}>
+                  <ProfilePage />
                 </ProtectedRoute>
               }
             />
@@ -220,6 +230,14 @@ function ProfileMenu({ userProfile, activeCampaignId, onLogout }) {
             onClick={() => handleNavigate("/party")}
           >
             My Party
+          </button>
+
+          <button
+            className="profile-menu__item"
+            type="button"
+            onClick={() => handleNavigate("/profile")}
+          >
+            Account Settings
           </button>
 
           <div className="profile-menu__divider" />
