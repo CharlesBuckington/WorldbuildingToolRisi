@@ -1,0 +1,397 @@
+/* Shared motion system and interaction polish */
+
+:root {
+  --motion-fast: 160ms;
+  --motion-base: 260ms;
+  --motion-slow: 520ms;
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --focus-elevation: 0 12px 24px rgba(98, 70, 33, 0.1);
+}
+
+[data-theme="dark"] {
+  --focus-elevation: 0 14px 28px rgba(0, 0, 0, 0.28);
+}
+
+@keyframes ambient-shift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1.02);
+  }
+
+  50% {
+    transform: translate3d(-1.25%, 0.75%, 0) scale(1.035);
+  }
+
+  100% {
+    transform: translate3d(1.15%, -0.85%, 0) scale(1.04);
+  }
+}
+
+@keyframes ambient-glow {
+  0% {
+    opacity: 0.9;
+    transform: translate3d(0, 0, 0) scale(1.01);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, -0.8%, 0) scale(1.035);
+  }
+}
+
+@keyframes surface-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.985);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes menu-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.975);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+body::before {
+  animation: ambient-shift 24s ease-in-out infinite alternate;
+  transform-origin: center;
+}
+
+body::after {
+  animation: ambient-glow 18s ease-in-out infinite alternate;
+  transform-origin: top center;
+}
+
+.topbar-inner {
+  animation: surface-enter 680ms var(--ease-soft) both;
+}
+
+.page {
+  animation: surface-enter 720ms var(--ease-soft) both 40ms;
+}
+
+.page > * {
+  opacity: 0;
+  animation: surface-enter 620ms var(--ease-soft) both;
+  animation-delay: 120ms;
+}
+
+.page > :nth-child(1) {
+  animation-delay: 120ms;
+}
+
+.page > :nth-child(2) {
+  animation-delay: 180ms;
+}
+
+.page > :nth-child(3) {
+  animation-delay: 240ms;
+}
+
+.page > :nth-child(4) {
+  animation-delay: 300ms;
+}
+
+.page > :nth-child(5) {
+  animation-delay: 360ms;
+}
+
+.page > :nth-child(6) {
+  animation-delay: 420ms;
+}
+
+.campaign-list > *,
+.party-grid > *,
+.entry-list > *,
+.player-management-list > *,
+.home-footer__links > *,
+.entry-content > *,
+.home-character-picker__results > * {
+  opacity: 0;
+  animation: surface-enter 560ms var(--ease-soft) both;
+  animation-delay: 150ms;
+}
+
+.campaign-list > :nth-child(1),
+.party-grid > :nth-child(1),
+.entry-list > :nth-child(1),
+.player-management-list > :nth-child(1),
+.home-footer__links > :nth-child(1),
+.entry-content > :nth-child(1),
+.home-character-picker__results > :nth-child(1) {
+  animation-delay: 150ms;
+}
+
+.campaign-list > :nth-child(2),
+.party-grid > :nth-child(2),
+.entry-list > :nth-child(2),
+.player-management-list > :nth-child(2),
+.home-footer__links > :nth-child(2),
+.entry-content > :nth-child(2),
+.home-character-picker__results > :nth-child(2) {
+  animation-delay: 210ms;
+}
+
+.campaign-list > :nth-child(3),
+.party-grid > :nth-child(3),
+.entry-list > :nth-child(3),
+.player-management-list > :nth-child(3),
+.home-footer__links > :nth-child(3),
+.entry-content > :nth-child(3),
+.home-character-picker__results > :nth-child(3) {
+  animation-delay: 270ms;
+}
+
+.campaign-list > :nth-child(4),
+.party-grid > :nth-child(4),
+.entry-list > :nth-child(4),
+.player-management-list > :nth-child(4),
+.home-footer__links > :nth-child(4),
+.entry-content > :nth-child(4),
+.home-character-picker__results > :nth-child(4) {
+  animation-delay: 330ms;
+}
+
+.campaign-list > :nth-child(5),
+.party-grid > :nth-child(5),
+.entry-list > :nth-child(5),
+.player-management-list > :nth-child(5),
+.home-footer__links > :nth-child(5),
+.entry-content > :nth-child(5),
+.home-character-picker__results > :nth-child(5) {
+  animation-delay: 390ms;
+}
+
+.profile-menu__dropdown,
+.marker-menu,
+.link-autocomplete {
+  animation: menu-enter 240ms var(--ease-soft) both;
+  transform-origin: top center;
+}
+
+.profile-menu__dropdown {
+  transform-origin: top right;
+}
+
+.content-block,
+.home-session,
+.campaign-hub__panel,
+.campaign-card,
+.player-management-row,
+.entry-list-item,
+.entry-filter-group,
+.character-profile-item,
+.profile-preview,
+.auth-card,
+.entry-header,
+.image-block__preview,
+.map-block__frame,
+.home-profile__image,
+.party-card__avatar,
+.profile-preview__image {
+  transition:
+    transform var(--motion-base) var(--ease-standard),
+    box-shadow var(--motion-base) var(--ease-standard),
+    border-color var(--motion-fast) ease,
+    background var(--motion-base) var(--ease-standard);
+}
+
+.content-block::before,
+.campaign-card::before {
+  transition:
+    opacity var(--motion-base) var(--ease-standard),
+    transform var(--motion-base) var(--ease-standard);
+}
+
+.content-block::before {
+  opacity: 0.72;
+}
+
+.campaign-card::before {
+  transform: scaleY(0.78);
+  opacity: 0.72;
+  transform-origin: center;
+}
+
+.fantasy-button,
+.topbar-link,
+.profile-menu__trigger,
+.profile-menu__item,
+.home-footer__link,
+.entry-filter-chip,
+.entry-tag,
+.entry-tag--suggestion,
+.link-autocomplete__item,
+.fantasy-input,
+select.fantasy-input,
+textarea.fantasy-input,
+.entry-link,
+.text-block-rendered a {
+  transition-timing-function: var(--ease-standard);
+}
+
+.fantasy-button {
+  transition:
+    transform var(--motion-base) var(--ease-standard),
+    filter var(--motion-fast) ease,
+    box-shadow var(--motion-base) var(--ease-standard),
+    border-color var(--motion-fast) ease;
+}
+
+.topbar-link,
+.profile-menu__trigger,
+.home-footer__link,
+.entry-filter-chip,
+.entry-tag--suggestion {
+  transition:
+    transform var(--motion-base) var(--ease-standard),
+    background var(--motion-base) var(--ease-standard),
+    color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-base) var(--ease-standard);
+}
+
+.profile-menu__item,
+.link-autocomplete__item {
+  transition:
+    transform var(--motion-base) var(--ease-standard),
+    background var(--motion-base) var(--ease-standard),
+    color var(--motion-fast) ease;
+}
+
+.fantasy-input,
+select.fantasy-input,
+textarea.fantasy-input {
+  transition:
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-base) var(--ease-standard),
+    background var(--motion-base) var(--ease-standard),
+    color var(--motion-fast) ease;
+}
+
+.fantasy-input:focus,
+select.fantasy-input:focus,
+textarea.fantasy-input:focus {
+  box-shadow: var(--ring), var(--focus-elevation);
+}
+
+.entry-link,
+.text-block-rendered a {
+  transition:
+    color var(--motion-fast) ease,
+    text-decoration-color var(--motion-base) ease,
+    text-underline-offset var(--motion-base) var(--ease-standard);
+}
+
+.text-block-rendered a {
+  text-underline-offset: 0.14em;
+}
+
+.text-block-rendered a:hover {
+  text-decoration-color: currentColor;
+  text-underline-offset: 0.24em;
+}
+
+.entry-tag {
+  transition:
+    transform var(--motion-base) var(--ease-standard),
+    background var(--motion-base) var(--ease-standard),
+    border-color var(--motion-fast) ease,
+    color var(--motion-fast) ease;
+}
+
+.image-block__img {
+  transition: transform var(--motion-slow) var(--ease-soft);
+  transform-origin: center;
+}
+
+@media (hover: hover) {
+  .content-block:hover,
+  .home-session:hover,
+  .campaign-hub__panel:hover,
+  .player-management-row:hover,
+  .entry-filter-group:hover,
+  .character-profile-item:hover,
+  .profile-preview:hover,
+  .auth-card:hover,
+  .entry-header:hover,
+  .image-block__preview:hover,
+  .map-block__frame:hover {
+    transform: translate3d(0, -4px, 0);
+    box-shadow: var(--shadow-md);
+  }
+
+  .content-block:hover::before {
+    opacity: 1;
+  }
+
+  .campaign-card:hover::before,
+  .campaign-card.is-selected::before {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+
+  .fantasy-button:hover:not(:disabled) {
+    transform: translate3d(0, -2px, 0) scale(1.01);
+  }
+
+  .fantasy-button:active:not(:disabled) {
+    transform: translate3d(0, 0, 0) scale(0.985);
+  }
+
+  .topbar-link:hover,
+  .profile-menu__trigger:hover,
+  .home-footer__link:hover,
+  .entry-filter-chip:hover,
+  .entry-tag--suggestion:hover {
+    transform: translate3d(0, -2px, 0);
+  }
+
+  .profile-menu__item:hover:not(:disabled),
+  .link-autocomplete__item:hover {
+    transform: translate3d(4px, 0, 0);
+  }
+
+  .entry-list-item:hover {
+    transform: translate3d(0, -3px, 0);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .image-block__preview:hover .image-block__img {
+    transform: scale(1.02);
+  }
+
+  .home-profile:hover .home-profile__image,
+  .party-card:hover .party-card__avatar,
+  .profile-preview:hover .profile-preview__image {
+    transform: translate3d(0, -2px, 0) scale(1.025);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  body::before,
+  body::after {
+    animation: none !important;
+    transform: none !important;
+  }
+}
