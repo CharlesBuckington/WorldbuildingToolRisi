@@ -9,7 +9,7 @@ import { useWiki } from "./store/wikiStore.jsx";
 import { useAuth } from "./store/authStore.jsx";
 
 function App() {
-  const { user, userProfile, authLoading, logout, activeCampaignId } = useAuth();
+  const { user, userProfile, authLoading, logout, activeCampaignId, activeCampaign } = useAuth();
 
   if (authLoading) {
     return (
@@ -51,6 +51,7 @@ function App() {
                 <ProfileMenu
                   userProfile={userProfile}
                   activeCampaignId={activeCampaignId}
+                  activeCampaign={activeCampaign}
                   onLogout={logout}
                 />
               </>
@@ -122,7 +123,7 @@ function App() {
   );
 }
 
-function ProfileMenu({ userProfile, activeCampaignId, onLogout }) {
+function ProfileMenu({ userProfile, activeCampaignId, activeCampaign, onLogout }) {
   const navigate = useNavigate();
   const menuRef = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -186,7 +187,7 @@ function ProfileMenu({ userProfile, activeCampaignId, onLogout }) {
               {userProfile?.displayName || "Adventurer"}
             </div>
             <div className="profile-menu__campaign">
-              Campaign: {activeCampaignId || "zerinthra"}
+              Campaign: {activeCampaign?.name || activeCampaignId || "No campaign selected"}
             </div>
           </div>
 
@@ -228,6 +229,7 @@ function ProfileMenu({ userProfile, activeCampaignId, onLogout }) {
             className="profile-menu__item"
             type="button"
             onClick={() => handleNavigate("/party")}
+            disabled={!activeCampaignId}
           >
             My Party
           </button>
@@ -268,6 +270,7 @@ function ProtectedRoute({ user, children }) {
 
 function EntryListPage() {
   const { entries } = useWiki();
+  const { activeCampaignId } = useAuth();
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedTags, setSelectedTags] = useState([]);
@@ -348,6 +351,15 @@ function EntryListPage() {
 
   const hasActiveFilters =
     search.trim() !== "" || selectedType !== "all" || selectedTags.length > 0;
+
+  if (!activeCampaignId) {
+    return (
+      <div className="page">
+        <h2 className="page-title">All Entries</h2>
+        <p>Select a campaign from the homepage before browsing entries.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="page">
@@ -476,18 +488,13 @@ function MyPartyPage() {
 
   const partyMembers = useMemo(() => {
     return Object.values(allUserProfiles)
-      .filter((profile) => {
-        const campaignIds = profile.campaignIds ?? [];
-        return campaignIds.includes(activeCampaignId);
-      })
       .map((profile) => {
-        const characterEntryId =
-          profile.playerCharacterEntryIds?.[activeCampaignId] ?? null;
+        const characterEntryId = profile.playerCharacterEntryId ?? null;
 
         const characterEntry = characterEntryId ? entries[characterEntryId] : null;
 
         return {
-          uid: profile.uid,
+          uid: profile.userUid,
           displayName: profile.displayName || "Adventurer",
           photoURL: profile.photoURL || "",
           characterEntryId,
@@ -495,7 +502,16 @@ function MyPartyPage() {
         };
       })
       .sort((a, b) => a.displayName.localeCompare(b.displayName));
-  }, [allUserProfiles, activeCampaignId, entries]);
+  }, [allUserProfiles, entries]);
+
+  if (!activeCampaignId) {
+    return (
+      <div className="page">
+        <h2 className="page-title">My Party</h2>
+        <p>Select a campaign from the homepage before opening the party view.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="page">

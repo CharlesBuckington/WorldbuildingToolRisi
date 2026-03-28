@@ -4,7 +4,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../store/authStore.jsx";
 
 function LoginPage() {
-  const { user, login, signup, authLoading } = useAuth();
+  const { user, login, signup, authLoading, publicSignupEnabled } = useAuth();
 
   const [mode, setMode] = useState("login");
   const [displayName, setDisplayName] = useState("");
@@ -13,11 +13,13 @@ function LoginPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const isSignupMode = publicSignupEnabled && mode === "signup";
+
   if (authLoading) {
     return (
       <div className="page auth-page">
         <div className="auth-card">
-          <p>Loading authentication…</p>
+          <p>Loading authentication...</p>
         </div>
       </div>
     );
@@ -33,7 +35,7 @@ function LoginPage() {
     setSubmitting(true);
 
     try {
-      if (mode === "signup") {
+      if (isSignupMode) {
         await signup({
           email,
           password,
@@ -57,24 +59,24 @@ function LoginPage() {
     <div className="page auth-page">
       <div className="auth-card">
         <h2 className="page-title">
-          {mode === "login" ? "Enter the Archive" : "Create an Account"}
+          {isSignupMode ? "Create an Account" : "Enter the Archive"}
         </h2>
 
         <p className="muted-text">
-          {mode === "login"
-            ? "Log in to continue to your worldbuilding tool."
-            : "Create your account to begin building your world."}
+          {isSignupMode
+            ? "Create your account to begin building your world."
+            : "Log in with an account that has already been created for you."}
         </p>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          {mode === "signup" && (
+          {isSignupMode && (
             <>
               <label className="field-label">Display Name</label>
               <input
                 className="fantasy-input"
                 type="text"
                 value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                onChange={(event) => setDisplayName(event.target.value)}
                 placeholder="Dungeon Master Risi"
                 required
               />
@@ -86,7 +88,7 @@ function LoginPage() {
             className="fantasy-input"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(event) => setEmail(event.target.value)}
             placeholder="you@example.com"
             required
           />
@@ -96,7 +98,7 @@ function LoginPage() {
             className="fantasy-input"
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(event) => setPassword(event.target.value)}
             placeholder="Your password"
             required
           />
@@ -105,40 +107,48 @@ function LoginPage() {
 
           <button className="fantasy-button auth-submit" type="submit" disabled={submitting}>
             {submitting
-              ? mode === "login"
-                ? "Logging in..."
-                : "Creating account..."
-              : mode === "login"
-              ? "Log In"
-              : "Create Account"}
+              ? isSignupMode
+                ? "Creating account..."
+                : "Logging in..."
+              : isSignupMode
+              ? "Create Account"
+              : "Log In"}
           </button>
         </form>
 
-        <div className="auth-switch">
-          {mode === "login" ? (
-            <button
-              type="button"
-              className="fantasy-button secondary"
-              onClick={() => {
-                setMode("signup");
-                setErrorMessage("");
-              }}
-            >
-              Need an account?
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="fantasy-button secondary"
-              onClick={() => {
-                setMode("login");
-                setErrorMessage("");
-              }}
-            >
-              Already have an account?
-            </button>
-          )}
-        </div>
+        {publicSignupEnabled ? (
+          <div className="auth-switch">
+            {isSignupMode ? (
+              <button
+                type="button"
+                className="fantasy-button secondary"
+                onClick={() => {
+                  setMode("login");
+                  setErrorMessage("");
+                }}
+              >
+                Already have an account?
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="fantasy-button secondary"
+                onClick={() => {
+                  setMode("signup");
+                  setErrorMessage("");
+                }}
+              >
+                Need an account?
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="auth-switch">
+            <p className="muted-text">
+              New accounts are currently created manually. Contact the campaign owner if you need access.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -146,6 +156,10 @@ function LoginPage() {
 
 function getAuthErrorMessage(error) {
   const code = error?.code || "";
+
+  if (code === "auth/public-signup-disabled") {
+    return "New account creation is currently disabled.";
+  }
 
   if (code === "auth/email-already-in-use") {
     return "This email address is already in use.";

@@ -16,6 +16,7 @@ function EntryPage() {
     entries,
     blocks,
     markers,
+    canEditEntry,
     updateEntry,
     deleteEntry,
     createBlock,
@@ -29,6 +30,8 @@ function EntryPage() {
   const pinnedEntryIds = userProfile?.pinnedEntryIds ?? [];
   const isPinned = pinnedEntryIds.includes(entryId);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const canEditCurrentEntry = canEditEntry(entryId);
+  const resolvedMode = canEditCurrentEntry ? mode : "view";
 
   const entryBlocks = useMemo(() => {
     return Object.values(blocks)
@@ -37,7 +40,7 @@ function EntryPage() {
   }, [blocks, entryId]);
 
   const availableTagSuggestions = useMemo(() => {
-    const currentTags = new Set((entry.tags ?? []).map((tag) => String(tag).toLowerCase()));
+    const currentTags = new Set(((entry?.tags) ?? []).map((tag) => String(tag).toLowerCase()));
     const normalizedInput = tagInput.trim().toLowerCase();
 
     const allTags = new Set();
@@ -58,7 +61,7 @@ function EntryPage() {
     return Array.from(allTags)
       .sort((a, b) => a.localeCompare(b))
       .slice(0, 8);
-  }, [entries, entry.tags, tagInput]);
+  }, [entries, entry?.tags, tagInput]);
 
   if (!entry) {
     return (
@@ -177,8 +180,8 @@ function EntryPage() {
   };
 
 return (
-  <div className={`page entry-layout entry-layout--${mode}`}>
-    {mode === "edit" && isSidebarOpen && (
+  <div className={`page entry-layout entry-layout--${resolvedMode}`}>
+    {resolvedMode === "edit" && canEditCurrentEntry && isSidebarOpen && (
       <aside className="entry-sidebar is-open">
         <div className="entry-sidebar__section">
           <h3 className="entry-sidebar__title">Editor</h3>
@@ -228,7 +231,7 @@ return (
     <div className="entry-main">
       <div className="entry-header">
         <div className="entry-header__main">
-          {mode === "edit" ? (
+          {resolvedMode === "edit" && canEditCurrentEntry ? (
             <>
               <div className="entry-edit-topbar">
                 <button
@@ -357,13 +360,17 @@ return (
                     {isPinned ? "Unpin Entry" : "Pin Entry"}
                   </button>
 
-                  <button
-                    className="fantasy-button"
-                    type="button"
-                    onClick={() => setMode("edit")}
-                  >
-                    Edit Entry
-                  </button>
+                  {canEditCurrentEntry ? (
+                    <button
+                      className="fantasy-button"
+                      type="button"
+                      onClick={() => setMode("edit")}
+                    >
+                      Edit Entry
+                    </button>
+                  ) : (
+                    <span className="entry-type-label">Read-only</span>
+                  )}
                 </div>
               </div>
             </>
@@ -380,7 +387,7 @@ return (
               <TextBlock
                 key={block.id}
                 block={block}
-                mode={mode}
+                mode={resolvedMode}
                 canMoveUp={canMoveUp}
                 canMoveDown={canMoveDown}
                 onMoveUp={() => moveBlock(entryId, block.id, "up")}
@@ -394,7 +401,7 @@ return (
               <ImageBlock
                 key={block.id}
                 block={block}
-                mode={mode}
+                mode={resolvedMode}
                 onDelete={() => deleteBlock(block.id)}
                 canMoveUp={canMoveUp}
                 canMoveDown={canMoveDown}
@@ -413,7 +420,7 @@ return (
               <MapBlock
                 key={block.id}
                 block={block}
-                mode={mode}
+                mode={resolvedMode}
                 markers={blockMarkers}
                 onDelete={() => deleteBlock(block.id)}
                 canMoveUp={canMoveUp}
@@ -429,7 +436,7 @@ return (
               <CharacterProfileBlock
                 key={block.id}
                 block={block}
-                mode={mode}
+                mode={resolvedMode}
                 onDelete={() => deleteBlock(block.id)}
                 canMoveUp={canMoveUp}
                 canMoveDown={canMoveDown}

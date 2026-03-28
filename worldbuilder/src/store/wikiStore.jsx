@@ -1,59 +1,292 @@
+/* eslint-disable react-hooks/set-state-in-effect, react-refresh/only-export-components */
 // src/store/wikiStore.jsx
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
 import {
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
+  query,
+  serverTimestamp,
   setDoc,
   updateDoc,
-  deleteDoc,
+  where,
   writeBatch,
-  serverTimestamp,
 } from "firebase/firestore";
 import { useAuth } from "./authStore.jsx";
 
 const WikiContext = createContext(null);
+const MAX_IN_QUERY_VALUES = 30;
+
+function chunkArray(items, size = MAX_IN_QUERY_VALUES) {
+  const chunks = [];
+
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+
+  return chunks;
+}
+
+function mergeChunkMaps(chunkMap) {
+  return Object.values(chunkMap).reduce((merged, currentChunk) => {
+    return {
+      ...merged,
+      ...currentChunk,
+    };
+  }, {});
+}
+
+function getEntryVisibility(entry) {
+  return entry?.visibility ?? "public";
+}
 
 export function WikiProvider({ children }) {
-  const { isAdmin, user, activeCampaignId } = useAuth();
+  const { user, activeCampaignId, isCampaignOwner, canWriteActiveCampaign } = useAuth();
   const [entries, setEntries] = useState({});
   const [blocks, setBlocks] = useState({});
   const [markers, setMarkers] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  const canEditEntry = (entryOrId) => {
+    const entry = typeof entryOrId === "string" ? entries[entryOrId] : entryOrId;
+
+    if (!entry || !user) {
+      return false;
+    }
+
+    if (entry.campaignId !== activeCampaignId) {
+      return false;
+    }
+
+    if (isCampaignOwner) {
+      return true;
+    }
+
+    const visibility = getEntryVisibility(entry);
+
+    if (visibility === "admin") {
+      return false;
+    }
+
+    if (visibility === "private") {
+      return entry.ownerUid === user.uid;
+    }
+
+    return canWriteActiveCampaign;
+  };
 
   useEffect(() => {
-    const unsubEntries = onSnapshot(collection(db, "entries"), (snapshot) => {
-      const next = {};
-      snapshot.forEach((docSnap) => {
-        next[docSnap.id] = docSnap.data();
-      });
-      setEntries(next);
-    });
-
-    const unsubBlocks = onSnapshot(collection(db, "blocks"), (snapshot) => {
-      const next = {};
-      snapshot.forEach((docSnap) => {
-        next[docSnap.id] = docSnap.data();
-      });
-      setBlocks(next);
-    });
-
-    const unsubMarkers = onSnapshot(collection(db, "markers"), (snapshot) => {
-      const next = {};
-      snapshot.forEach((docSnap) => {
-        next[docSnap.id] = docSnap.data();
-      });
-      setMarkers(next);
+    if (!user || !activeCampaignId) {
+      setEntries({});
       setLoading(false);
-    });
+      return undefined;
+    }
+
+    setLoading(true);
+
+    const entrySlices = {
+      public: {},
+      private: {},
+      admin: {},
+    };
+
+    const status = {
+      public: false,
+      private: false,
+      admin: !isCampaignOwner,
+    };
+
+    const updateEntries = () => {
+      setEntries({
+        ...entrySlices.public,
+        ...entrySlices.private,
+        ...entrySlices.admin,
+      });
+
+      if (status.public && status.private && status.admin) {
+        setLoading(false);
+      }
+    };
+
+    const handleSnapshot = (key) => (snapshot) => {
+      const next = {};
+
+      snapshot.forEach((docSnap) => {
+        next[docSnap.id] = docSnap.data();
+      });
+
+      entrySlices[key] = next;
+      status[key] = true;
+      updateEntries();
+    };
+
+    const handleError = (key) => (error) => {
+      console.error(`Failed to subscribe to ${key} entries:`, error);
+      entrySlices[key] = {};
+      status[key] = true;
+      updateEntries();
+    };
+
+    const unsubscribers = [
+      onSnapshot(
+        query(
+          collection(db, "entries"),
+          where("campaignId", "==", activeCampaignId),
+          where("visibility", "==", "public")
+        ),
+        handleSnapshot("public"),
+        handleError("public")
+      ),
+      onSnapshot(
+        query(
+          collection(db, "entries"),
+          where("campaignId", "==", activeCampaignId),
+          where("visibility", "==", "private"),
+          where("ownerUid", "==", user.uid)
+        ),
+        handleSnapshot("private"),
+        handleError("private")
+      ),
+    ];
+
+    if (isCampaignOwner) {
+      unsubscribers.push(
+        onSnapshot(
+          query(
+            collection(db, "entries"),
+            where("campaignId", "==", activeCampaignId),
+            where("visibility", "==", "admin")
+          ),
+          handleSnapshot("admin"),
+          handleError("admin")
+        )
+      );
+    }
 
     return () => {
-      unsubEntries();
-      unsubBlocks();
-      unsubMarkers();
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+      setEntries({});
+      setLoading(false);
     };
-  }, []);
+  }, [user, activeCampaignId, isCampaignOwner]);
+
+  const visibleEntryIds = useMemo(() => {
+    return Object.keys(entries).sort((a, b) => a.localeCompare(b));
+  }, [entries]);
+
+  useEffect(() => {
+    if (!user || !activeCampaignId || visibleEntryIds.length === 0) {
+      setBlocks({});
+      return undefined;
+    }
+
+    const blockChunks = {};
+    const unsubscribers = chunkArray(visibleEntryIds).map((entryIdChunk, chunkIndex) =>
+      onSnapshot(
+        query(collection(db, "blocks"), where("entryId", "in", entryIdChunk)),
+        (snapshot) => {
+          const nextChunk = {};
+
+          snapshot.forEach((docSnap) => {
+            nextChunk[docSnap.id] = docSnap.data();
+          });
+
+          blockChunks[chunkIndex] = nextChunk;
+          setBlocks(mergeChunkMaps(blockChunks));
+        },
+        (error) => {
+          console.error("Failed to subscribe to blocks:", error);
+          blockChunks[chunkIndex] = {};
+          setBlocks(mergeChunkMaps(blockChunks));
+        }
+      )
+    );
+
+    return () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+      setBlocks({});
+    };
+  }, [user, activeCampaignId, visibleEntryIds]);
+
+  const visibleBlockIds = useMemo(() => {
+    return Object.keys(blocks).sort((a, b) => a.localeCompare(b));
+  }, [blocks]);
+
+  useEffect(() => {
+    if (!user || !activeCampaignId) {
+      setMarkers({});
+      return undefined;
+    }
+
+    const entryMarkerChunks = {};
+    const blockMarkerChunks = {};
+    const unsubscribers = [];
+
+    const updateMarkers = () => {
+      setMarkers({
+        ...mergeChunkMaps(entryMarkerChunks),
+        ...mergeChunkMaps(blockMarkerChunks),
+      });
+    };
+
+    chunkArray(visibleEntryIds).forEach((entryIdChunk, chunkIndex) => {
+      unsubscribers.push(
+        onSnapshot(
+          query(collection(db, "markers"), where("entryId", "in", entryIdChunk)),
+          (snapshot) => {
+            const nextChunk = {};
+
+            snapshot.forEach((docSnap) => {
+              nextChunk[docSnap.id] = docSnap.data();
+            });
+
+            entryMarkerChunks[chunkIndex] = nextChunk;
+            updateMarkers();
+          },
+          (error) => {
+            console.error("Failed to subscribe to entry markers:", error);
+            entryMarkerChunks[chunkIndex] = {};
+            updateMarkers();
+          }
+        )
+      );
+    });
+
+    chunkArray(visibleBlockIds).forEach((blockIdChunk, chunkIndex) => {
+      unsubscribers.push(
+        onSnapshot(
+          query(collection(db, "markers"), where("blockId", "in", blockIdChunk)),
+          (snapshot) => {
+            const nextChunk = {};
+
+            snapshot.forEach((docSnap) => {
+              nextChunk[docSnap.id] = docSnap.data();
+            });
+
+            blockMarkerChunks[chunkIndex] = nextChunk;
+            updateMarkers();
+          },
+          (error) => {
+            console.error("Failed to subscribe to block markers:", error);
+            blockMarkerChunks[chunkIndex] = {};
+            updateMarkers();
+          }
+        )
+      );
+    });
+
+    if (unsubscribers.length === 0) {
+      setMarkers({});
+      return undefined;
+    }
+
+    return () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+      setMarkers({});
+    };
+  }, [user, activeCampaignId, visibleEntryIds, visibleBlockIds]);
 
   const createDocWithId = async (collectionName, data) => {
     const colRef = collection(db, collectionName);
@@ -64,12 +297,20 @@ export function WikiProvider({ children }) {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
+
     await setDoc(docRef, fullData);
     return fullData;
   };
 
-  // Entries ---------------------------------------------------
   const createEntry = async (partial = {}) => {
+    if (!user || !activeCampaignId) {
+      throw new Error("No active campaign selected.");
+    }
+
+    if (!canWriteActiveCampaign) {
+      throw new Error("You do not have write access to this campaign.");
+    }
+
     return createDocWithId("entries", {
       title: partial.title ?? "New Entry",
       type: partial.type ?? "location",
@@ -77,12 +318,25 @@ export function WikiProvider({ children }) {
       tags: partial.tags ?? [],
       campaignId: partial.campaignId ?? activeCampaignId,
       visibility: partial.visibility ?? "public",
-      ownerUid: partial.ownerUid ?? null,
-      updatedBy: user?.uid ?? null,
+      ownerUid: partial.ownerUid ?? user.uid,
+      updatedBy: user.uid,
     });
   };
 
   const updateEntry = async (entryId, updates) => {
+    const entry = entries[entryId];
+
+    if (!canEditEntry(entry)) {
+      throw new Error("You do not have permission to edit this entry.");
+    }
+
+    if (
+      updates.visibility === "admin" &&
+      !isCampaignOwner
+    ) {
+      throw new Error("Only the campaign owner can create admin-only entries.");
+    }
+
     await updateDoc(doc(db, "entries", entryId), {
       ...updates,
       updatedAt: serverTimestamp(),
@@ -91,13 +345,18 @@ export function WikiProvider({ children }) {
   };
 
   const deleteEntry = async (entryId) => {
-    const batch = writeBatch(db);
+    const entry = entries[entryId];
 
-    const entryBlocks = Object.values(blocks).filter((b) => b.entryId === entryId);
-    const entryBlockIds = new Set(entryBlocks.map((b) => b.id));
+    if (!canEditEntry(entry)) {
+      throw new Error("You do not have permission to delete this entry.");
+    }
+
+    const batch = writeBatch(db);
+    const entryBlocks = Object.values(blocks).filter((block) => block.entryId === entryId);
+    const entryBlockIds = new Set(entryBlocks.map((block) => block.id));
 
     const relatedMarkers = Object.values(markers).filter(
-      (m) => m.entryId === entryId || entryBlockIds.has(m.blockId)
+      (marker) => marker.entryId === entryId || entryBlockIds.has(marker.blockId)
     );
 
     batch.delete(doc(db, "entries", entryId));
@@ -113,8 +372,11 @@ export function WikiProvider({ children }) {
     await batch.commit();
   };
 
-  // Blocks ----------------------------------------------------
   const createBlock = async (partial) => {
+    if (!canEditEntry(partial.entryId)) {
+      throw new Error("You do not have permission to edit this entry.");
+    }
+
     return createDocWithId("blocks", {
       entryId: partial.entryId,
       type: partial.type,
@@ -129,6 +391,12 @@ export function WikiProvider({ children }) {
   };
 
   const updateBlock = async (blockId, updates) => {
+    const block = blocks[blockId];
+
+    if (!block || !canEditEntry(block.entryId)) {
+      throw new Error("You do not have permission to edit this block.");
+    }
+
     await updateDoc(doc(db, "blocks", blockId), {
       ...updates,
       updatedAt: serverTimestamp(),
@@ -136,12 +404,17 @@ export function WikiProvider({ children }) {
   };
 
   const deleteBlock = async (blockId) => {
-    const batch = writeBatch(db);
+    const block = blocks[blockId];
 
+    if (!block || !canEditEntry(block.entryId)) {
+      throw new Error("You do not have permission to delete this block.");
+    }
+
+    const batch = writeBatch(db);
     batch.delete(doc(db, "blocks", blockId));
 
     Object.values(markers)
-      .filter((m) => m.blockId === blockId)
+      .filter((marker) => marker.blockId === blockId)
       .forEach((marker) => {
         batch.delete(doc(db, "markers", marker.id));
       });
@@ -149,8 +422,13 @@ export function WikiProvider({ children }) {
     await batch.commit();
   };
 
-  // Markers ---------------------------------------------------
   const createMarker = async (partial) => {
+    const targetEntryId = partial.entryId ?? blocks[partial.blockId]?.entryId ?? null;
+
+    if (!targetEntryId || !canEditEntry(targetEntryId)) {
+      throw new Error("You do not have permission to edit this marker.");
+    }
+
     return createDocWithId("markers", {
       blockId: partial.blockId,
       entryId: partial.entryId ?? null,
@@ -162,6 +440,14 @@ export function WikiProvider({ children }) {
   };
 
   const updateMarker = async (markerId, updates) => {
+    const marker = markers[markerId];
+    const targetEntryId =
+      updates.entryId ?? marker?.entryId ?? blocks[marker?.blockId]?.entryId ?? null;
+
+    if (!marker || !targetEntryId || !canEditEntry(targetEntryId)) {
+      throw new Error("You do not have permission to edit this marker.");
+    }
+
     await updateDoc(doc(db, "markers", markerId), {
       ...updates,
       updatedAt: serverTimestamp(),
@@ -169,10 +455,21 @@ export function WikiProvider({ children }) {
   };
 
   const deleteMarker = async (markerId) => {
+    const marker = markers[markerId];
+    const targetEntryId = marker?.entryId ?? blocks[marker?.blockId]?.entryId ?? null;
+
+    if (!marker || !targetEntryId || !canEditEntry(targetEntryId)) {
+      throw new Error("You do not have permission to delete this marker.");
+    }
+
     await deleteDoc(doc(db, "markers", markerId));
   };
 
   const moveBlock = async (entryId, blockId, direction) => {
+    if (!canEditEntry(entryId)) {
+      throw new Error("You do not have permission to reorder blocks in this entry.");
+    }
+
     const entryBlocks = Object.values(blocks)
       .filter((block) => block.entryId === entryId)
       .sort((a, b) => a.order - b.order);
@@ -180,8 +477,7 @@ export function WikiProvider({ children }) {
     const currentIndex = entryBlocks.findIndex((block) => block.id === blockId);
     if (currentIndex === -1) return;
 
-    const targetIndex =
-      direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
 
     if (targetIndex < 0 || targetIndex >= entryBlocks.length) return;
 
@@ -200,95 +496,33 @@ export function WikiProvider({ children }) {
     ]);
   };
 
-  const visibleEntries = useMemo(() => {
-    return Object.fromEntries(
-      Object.entries(entries).filter(([, entry]) => {
-        if (isAdmin) {
-          return true;
-        }
+  const value = {
+    entries,
+    blocks,
+    markers,
+    loading,
+    canEditEntry,
+    createEntry,
+    updateEntry,
+    deleteEntry,
+    createBlock,
+    updateBlock,
+    deleteBlock,
+    createMarker,
+    updateMarker,
+    deleteMarker,
+    moveBlock,
+  };
 
-        if ((entry.campaignId ?? activeCampaignId) !== activeCampaignId) {
-          return false;
-        }
-
-        const visibility = entry.visibility ?? "public";
-
-        if (visibility === "public") {
-          return true;
-        }
-
-        if (visibility === "private") {
-          return entry.ownerUid === user?.uid;
-        }
-
-        return false;
-      })
-    );
-  }, [entries, isAdmin, activeCampaignId, user]);
-
-  const visibleMarkers = useMemo(() => {
-    return Object.fromEntries(
-      Object.entries(markers).filter(([, marker]) => {
-        if (isAdmin) return true;
-
-        if (!marker.entryId) {
-          return true;
-        }
-
-        const linkedEntry = entries[marker.entryId];
-
-        if (!linkedEntry) {
-          return false;
-        }
-
-        if ((linkedEntry.campaignId ?? activeCampaignId) !== activeCampaignId) {
-          return false;
-        }
-
-        const visibility = linkedEntry.visibility ?? "public";
-
-        if (visibility === "public") {
-          return true;
-        }
-
-        if (visibility === "private") {
-          return linkedEntry.ownerUid === user?.uid;
-        }
-
-        return false;
-      })
-    );
-  }, [markers, entries, isAdmin, activeCampaignId, user]);
-
-  const value = useMemo(
-    () => ({
-      entries: visibleEntries,
-      blocks,
-      markers: visibleMarkers,
-      loading,
-      createEntry,
-      updateEntry,
-      deleteEntry,
-      createBlock,
-      updateBlock,
-      deleteBlock,
-      createMarker,
-      updateMarker,
-      deleteMarker,
-      moveBlock
-    }),
-    [visibleEntries, blocks, visibleMarkers, loading]
-  );
-
-
-  
   return <WikiContext.Provider value={value}>{children}</WikiContext.Provider>;
 }
 
 export function useWiki() {
   const ctx = useContext(WikiContext);
+
   if (!ctx) {
     throw new Error("useWiki must be used within a WikiProvider");
   }
+
   return ctx;
 }

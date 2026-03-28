@@ -1,4 +1,5 @@
 // src/components/TextBlock.jsx
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useWiki } from "../store/wikiStore.jsx";

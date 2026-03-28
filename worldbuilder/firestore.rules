@@ -3,17 +3,258 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 3, 31);
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function campaignRef(campaignId) {
+      return /databases/$(database)/documents/campaigns/$(campaignId);
+    }
+
+    function membershipRef(campaignId, userId) {
+      return /databases/$(database)/documents/campaignMembers/$(campaignId + "_" + userId);
+    }
+
+    function entryRef(entryId) {
+      return /databases/$(database)/documents/entries/$(entryId);
+    }
+
+    function blockRef(blockId) {
+      return /databases/$(database)/documents/blocks/$(blockId);
+    }
+
+    function campaignExists(campaignId) {
+      return exists(campaignRef(campaignId));
+    }
+
+    function isCampaignOwner(campaignId) {
+      return isSignedIn()
+        && campaignExists(campaignId)
+        && get(campaignRef(campaignId)).data.ownerUid == request.auth.uid;
+    }
+
+    function isCampaignMember(campaignId) {
+      return isSignedIn()
+        && exists(membershipRef(campaignId, request.auth.uid));
+    }
+
+    function canWriteCampaign(campaignId) {
+      return isCampaignOwner(campaignId)
+        || (
+          isCampaignMember(campaignId)
+          && get(membershipRef(campaignId, request.auth.uid)).data.canWrite == true
+        );
+    }
+
+    function entryVisibility(entryData) {
+      return entryData.visibility != null ? entryData.visibility : "public";
+    }
+
+    function canReadEntryData(entryData) {
+      return isSignedIn()
+        && (
+          (entryVisibility(entryData) == "public" && isCampaignMember(entryData.campaignId))
+          || (
+            entryVisibility(entryData) == "private"
+            && (
+              entryData.ownerUid == request.auth.uid
+              || isCampaignOwner(entryData.campaignId)
+            )
+          )
+          || (
+            entryVisibility(entryData) == "admin"
+            && isCampaignOwner(entryData.campaignId)
+          )
+        );
+    }
+
+    function canSetEntryVisibility(entryData) {
+      return (
+        entryVisibility(entryData) == "public"
+        && canWriteCampaign(entryData.campaignId)
+      ) || (
+        entryVisibility(entryData) == "private"
+        && entryData.ownerUid == request.auth.uid
+      ) || (
+        entryVisibility(entryData) == "admin"
+        && isCampaignOwner(entryData.campaignId)
+      );
+    }
+
+    function canEditEntryData(entryData) {
+      return isSignedIn()
+        && (
+          (entryVisibility(entryData) == "public" && canWriteCampaign(entryData.campaignId))
+          || (
+            entryVisibility(entryData) == "private"
+            && (
+              entryData.ownerUid == request.auth.uid
+              || isCampaignOwner(entryData.campaignId)
+            )
+          )
+          || (
+            entryVisibility(entryData) == "admin"
+            && isCampaignOwner(entryData.campaignId)
+          )
+        );
+    }
+
+    function canReadEntryDoc(entryId) {
+      return exists(entryRef(entryId))
+        && canReadEntryData(get(entryRef(entryId)).data);
+    }
+
+    function canEditEntryDoc(entryId) {
+      return exists(entryRef(entryId))
+        && canEditEntryData(get(entryRef(entryId)).data);
+    }
+
+    match /users/{userId} {
+      allow read, create, update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    match /campaigns/{campaignId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+
+      allow create: if isSignedIn()
+        && request.resource.data.id == campaignId
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.joinSalt is string
+        && request.resource.data.joinPasswordHash is string;
+
+      allow update, delete: if isCampaignOwner(campaignId);
+    }
+
+    match /campaignMembers/{membershipId} {
+      allow get, list: if isSignedIn()
+        && isCampaignMember(resource.data.campaignId);
+
+      allow create: if isSignedIn()
+        && request.resource.data.id == membershipId
+        && request.resource.data.userUid == request.auth.uid
+        && request.resource.data.campaignId is string
+        && request.resource.data.userUid is string
+        && request.resource.data.displayName is string
+        && request.resource.data.photoURL is string
+        && (
+          request.resource.data.playerCharacterEntryId == null
+          || request.resource.data.playerCharacterEntryId is string
+        )
+        && (
+          (
+            isCampaignOwner(request.resource.data.campaignId)
+            && request.resource.data.canWrite == true
+            && request.resource.data.isOwner == true
+            && request.resource.data.joinProof == null
+          )
+          || (
+            campaignExists(request.resource.data.campaignId)
+            && request.resource.data.canWrite == false
+            && request.resource.data.isOwner == false
+            && request.resource.data.joinProof
+              == get(campaignRef(request.resource.data.campaignId)).data.joinPasswordHash
+          )
+        );
+
+      allow update: if isSignedIn()
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.campaignId == resource.data.campaignId
+        && request.resource.data.userUid == resource.data.userUid
+        && (
+          (
+            isCampaignOwner(resource.data.campaignId)
+            && request.resource.data.isOwner == resource.data.isOwner
+            && (
+              !resource.data.isOwner
+              || request.resource.data.canWrite == true
+            )
+          )
+          || (
+            request.auth.uid == resource.data.userUid
+            && request.resource.data.canWrite == resource.data.canWrite
+            && request.resource.data.isOwner == resource.data.isOwner
+          )
+        );
+
+      allow delete: if isCampaignOwner(resource.data.campaignId)
+        && resource.data.isOwner != true;
+    }
+
+    match /entries/{entryId} {
+      allow get, list: if canReadEntryData(resource.data);
+
+      allow create: if isSignedIn()
+        && request.resource.data.id == entryId
+        && request.resource.data.ownerUid == request.auth.uid
+        && canSetEntryVisibility(request.resource.data);
+
+      allow update: if canEditEntryData(resource.data)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.campaignId == resource.data.campaignId
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && canSetEntryVisibility(request.resource.data);
+
+      allow delete: if canEditEntryData(resource.data);
+    }
+
+    match /blocks/{blockId} {
+      allow get, list: if resource.data.entryId is string
+        && canReadEntryDoc(resource.data.entryId);
+
+      allow create: if request.resource.data.id == blockId
+        && request.resource.data.entryId is string
+        && canEditEntryDoc(request.resource.data.entryId);
+
+      allow update: if resource.data.entryId is string
+        && request.resource.data.entryId == resource.data.entryId
+        && canEditEntryDoc(resource.data.entryId);
+
+      allow delete: if resource.data.entryId is string
+        && canEditEntryDoc(resource.data.entryId);
+    }
+
+    match /markers/{markerId} {
+      allow get, list: if (
+        resource.data.entryId is string
+        && canReadEntryDoc(resource.data.entryId)
+      ) || (
+        resource.data.blockId is string
+        && exists(blockRef(resource.data.blockId))
+        && canReadEntryDoc(get(blockRef(resource.data.blockId)).data.entryId)
+      );
+
+      allow create: if request.resource.data.id == markerId
+        && (
+          (
+            request.resource.data.entryId is string
+            && canEditEntryDoc(request.resource.data.entryId)
+          ) || (
+            request.resource.data.blockId is string
+            && exists(blockRef(request.resource.data.blockId))
+            && canEditEntryDoc(get(blockRef(request.resource.data.blockId)).data.entryId)
+          )
+        );
+
+      allow update: if (
+        resource.data.entryId is string
+        && canEditEntryDoc(resource.data.entryId)
+      ) || (
+        resource.data.blockId is string
+        && exists(blockRef(resource.data.blockId))
+        && canEditEntryDoc(get(blockRef(resource.data.blockId)).data.entryId)
+      );
+
+      allow delete: if (
+        resource.data.entryId is string
+        && canEditEntryDoc(resource.data.entryId)
+      ) || (
+        resource.data.blockId is string
+        && exists(blockRef(resource.data.blockId))
+        && canEditEntryDoc(get(blockRef(resource.data.blockId)).data.entryId)
+      );
     }
   }
 }
