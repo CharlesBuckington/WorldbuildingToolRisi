@@ -3,7 +3,7 @@
 .home-dashboard,
 .campaign-hub {
   display: grid;
-  gap: 1.35rem;
+  gap: 1.1rem;
 }
 
 .home-card {
@@ -16,31 +16,33 @@
   grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.9fr);
   gap: 1.5rem;
   align-items: stretch;
-  background: linear-gradient(145deg, rgba(50, 39, 35, 0.94), rgba(20, 17, 25, 0.96));
+  background: linear-gradient(180deg, rgba(251, 244, 228, 0.96), rgba(238, 226, 195, 0.96));
 }
 
 .home-hero__title {
   margin: 0;
-  color: var(--parchment);
+  color: var(--accent-strong);
   font-family: var(--font-display);
-  font-size: clamp(2.3rem, 3vw, 3.2rem);
+  font-size: clamp(2.35rem, 3vw, 3.3rem);
+  font-variant: small-caps;
   line-height: 0.98;
+  letter-spacing: 0.03em;
 }
 
 .home-hero__text {
   margin: 0.5rem 0 0;
   color: var(--text-muted);
-  line-height: 1.6;
+  line-height: 1.72;
   max-width: 56ch;
 }
 
 .home-session,
 .campaign-hub__panel {
   padding: 1.15rem 1.2rem;
-  border: 1px solid rgba(226, 199, 157, 0.12);
-  border-radius: 22px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(140, 102, 55, 0.18);
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(248, 238, 213, 0.92), rgba(234, 219, 185, 0.92));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .home-session {
@@ -50,9 +52,11 @@
 }
 
 .home-session__label {
-  color: var(--parchment);
+  color: var(--accent-strong);
   font-size: 1.1rem;
   font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: 0.03em;
 }
 
 .home-session__detail {
@@ -62,7 +66,7 @@
 
 .home-grid {
   display: grid;
-  gap: 1.25rem;
+  gap: 1.1rem;
 }
 
 .home-grid--top,
@@ -101,15 +105,15 @@
   padding: 0.68rem 0.9rem;
   border: 1px solid var(--border-soft);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--parchment);
+  background: rgba(255, 250, 239, 0.76);
+  color: var(--accent-strong);
   text-decoration: none;
   transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 
 .home-footer__link:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--accent-strong);
+  background: rgba(244, 231, 200, 0.92);
+  color: #8c3519;
   transform: translateY(-1px);
 }
 
@@ -132,9 +136,14 @@
 }
 
 .party-card__name {
+  display: inline-block;
   margin: 0;
-  color: var(--parchment);
-  font-size: 1.2rem;
+  color: var(--accent-strong);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-variant: small-caps;
+  border-bottom: 1px solid rgba(138, 97, 43, 0.38);
+  padding-bottom: 0.1rem;
 }
 
 .party-card__label {
@@ -219,8 +228,8 @@
   width: 100%;
   padding: 1rem;
   border: 1px solid var(--border-soft);
-  border-radius: 24px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(251, 245, 231, 0.95), rgba(238, 226, 194, 0.92));
   color: var(--text);
   display: grid;
   gap: 1rem;
@@ -240,12 +249,12 @@
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
-  width: 4px;
+  width: 5px;
   background: linear-gradient(
     180deg,
-    rgba(227, 187, 115, 0) 0%,
-    rgba(227, 187, 115, 0.86) 50%,
-    rgba(227, 187, 115, 0) 100%
+    rgba(107, 34, 19, 0) 0%,
+    rgba(107, 34, 19, 0.9) 50%,
+    rgba(107, 34, 19, 0) 100%
   );
   pointer-events: none;
 }
@@ -257,22 +266,24 @@
 
 .campaign-card:hover {
   transform: translateY(-4px);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025));
-  border-color: rgba(227, 187, 115, 0.3);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28);
+  background: linear-gradient(180deg, rgba(252, 247, 235, 0.98), rgba(242, 231, 201, 0.96));
+  border-color: rgba(135, 65, 31, 0.22);
+  box-shadow: var(--shadow-md);
 }
 
 .campaign-card.is-selected {
-  border-color: rgba(227, 187, 115, 0.44);
-  background: linear-gradient(180deg, rgba(227, 187, 115, 0.1), rgba(255, 255, 255, 0.03));
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.32);
+  border-color: rgba(135, 65, 31, 0.34);
+  background: linear-gradient(180deg, rgba(247, 232, 204, 0.92), rgba(240, 225, 193, 0.96));
+  box-shadow: var(--shadow-md);
 }
 
 .campaign-card__title {
-  color: var(--parchment);
+  color: var(--accent-strong);
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: 0.025em;
 }
 
 .campaign-card__subtitle,
@@ -290,8 +301,8 @@
 .player-management-row {
   padding: 1rem 1.1rem;
   border: 1px solid var(--border-soft);
-  border-radius: 20px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(252, 247, 233, 0.8), rgba(239, 227, 195, 0.74));
   align-items: center;
 }
 
@@ -303,16 +314,18 @@
 }
 
 .player-management-row__name {
-  color: var(--parchment);
+  color: var(--accent-strong);
   font-weight: 700;
 }
 
 @media (max-width: 960px) {
   .home-hero,
-  .home-footer,
+  .home-footer {
+    grid-template-columns: 1fr;
+  }
+
   .campaign-hub__header,
   .player-management-row {
-    grid-template-columns: 1fr;
     flex-direction: column;
     align-items: flex-start;
   }

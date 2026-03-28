@@ -13,17 +13,16 @@
   width: min(100%, 540px);
   padding: 1.7rem;
   border: 1px solid var(--border);
-  border-radius: 30px;
-  background: linear-gradient(145deg, rgba(37, 30, 36, 0.96), rgba(17, 15, 22, 0.98));
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(252, 246, 232, 0.98), rgba(240, 228, 198, 0.98));
   box-shadow: var(--shadow-lg);
-  backdrop-filter: blur(16px);
 }
 
 .auth-card::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.045), transparent 22%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 22%);
   pointer-events: none;
 }
 
@@ -54,5 +53,5 @@
 
 .auth-error {
   margin: 0.25rem 0 0;
-  color: #e7a39a;
+  color: var(--danger);
 }

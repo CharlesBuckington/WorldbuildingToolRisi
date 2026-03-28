@@ -8,8 +8,20 @@ import ProfilePage from "./pages/ProfilePage.jsx";
 import { useWiki } from "./store/wikiStore.jsx";
 import { useAuth } from "./store/authStore.jsx";
 
+const THEME_STORAGE_KEY = "worldbuilder-theme";
+
 function App() {
   const { user, userProfile, authLoading, logout, activeCampaignId, activeCampaign } = useAuth();
+  const [theme, setTheme] = useState(getInitialTheme);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"));
+  };
 
   if (authLoading) {
     return (
@@ -38,6 +50,14 @@ function App() {
           </div>
 
           <nav className="topbar-nav">
+            <button
+              className="topbar-link topbar-link--button theme-toggle"
+              type="button"
+              onClick={toggleTheme}
+            >
+              {theme === "light" ? "Dark Mode" : "Light Mode"}
+            </button>
+
             {user ? (
               <>
                 <Link className="topbar-link" to="/">
@@ -121,6 +141,15 @@ function App() {
       </main>
     </div>
   );
+}
+
+function getInitialTheme() {
+  if (typeof window === "undefined") {
+    return "light";
+  }
+
+  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+  return storedTheme === "dark" ? "dark" : "light";
 }
 
 function ProfileMenu({ userProfile, activeCampaignId, activeCampaign, onLogout }) {
