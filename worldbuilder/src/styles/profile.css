@@ -2,22 +2,23 @@
 
 .profile-page {
   display: grid;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .profile-card {
-  max-width: 720px;
+  max-width: 780px;
 }
 
 .profile-preview {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 1rem;
   margin: 1rem 0 1.25rem;
-  padding: 1rem;
+  padding: 1.15rem;
   border: 1px solid var(--border-soft);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
 }
 
 .profile-preview__meta {
@@ -26,7 +27,8 @@
 
 .profile-preview__name {
   color: var(--parchment);
-  font-size: 1.25rem;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
   font-weight: 700;
 }
 
