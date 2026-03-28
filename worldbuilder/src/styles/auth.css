@@ -1,0 +1,44 @@
+/* Login and signup */
+
+.auth-page {
+  min-height: 70vh;
+  display: grid;
+  place-items: center;
+}
+
+.auth-card {
+  width: min(100%, 480px);
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at top, rgba(224, 182, 103, 0.1), transparent 36%),
+    linear-gradient(180deg, rgba(55, 44, 34, 0.96), rgba(34, 27, 21, 0.99));
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(12px);
+}
+
+.auth-card .page-title {
+  margin-bottom: 0.35rem;
+}
+
+.auth-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.auth-submit {
+  margin-top: 0.5rem;
+}
+
+.auth-switch {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.auth-error {
+  margin: 0.25rem 0 0;
+  color: #e7a39a;
+}

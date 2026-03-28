@@ -1,0 +1,316 @@
+/* Shared panels, forms, buttons, lists, tags, and reusable display pieces */
+
+.content-block {
+  display: grid;
+  gap: 1rem;
+  padding: 1.15rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at top right, rgba(224, 182, 103, 0.08), transparent 32%),
+    linear-gradient(180deg, rgba(58, 46, 35, 0.95) 0%, rgba(34, 27, 21, 0.98) 100%);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(10px);
+}
+
+.block-edit-fields {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.field-label,
+.home-eyebrow,
+.home-card__eyebrow,
+.party-card__label,
+.character-profile-item__label,
+.entry-tag-suggestions__label {
+  margin: 0;
+  color: var(--parchment-dark);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.home-eyebrow,
+.home-card__eyebrow {
+  margin-bottom: 0.45rem;
+}
+
+.home-card__title {
+  margin: 0;
+  color: var(--parchment);
+  font-size: 1.3rem;
+}
+
+.home-card__text {
+  margin: 0.5rem 0 0;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.fantasy-input {
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(127, 98, 59, 0.8);
+  border-radius: 12px;
+  background: rgba(18, 14, 11, 0.9);
+  color: var(--text);
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.fantasy-input::placeholder {
+  color: #8f7d63;
+}
+
+.fantasy-input:focus {
+  outline: none;
+  border-color: var(--accent-strong);
+  box-shadow: var(--ring);
+  background: rgba(23, 18, 13, 0.96);
+}
+
+.fantasy-input:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.fantasy-input--title {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+textarea.fantasy-input {
+  resize: vertical;
+  min-height: 180px;
+  line-height: 1.6;
+}
+
+.fantasy-button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.72rem 1rem;
+  border: 1px solid #8b6c3d;
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(243, 204, 126, 0.16), transparent 32%),
+    linear-gradient(180deg, #a87d39 0%, #7f5d2a 100%);
+  color: #fff8ea;
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.15s ease,
+    filter 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.fantasy-button:hover:not(:disabled) {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.26);
+}
+
+.fantasy-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.fantasy-button:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.fantasy-button.secondary {
+  border-color: #6f593d;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 38%),
+    linear-gradient(180deg, #544637 0%, #3a3025 100%);
+}
+
+.fantasy-button.danger {
+  border-color: #7d3028;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 38%),
+    linear-gradient(180deg, var(--danger-strong) 0%, var(--danger) 100%);
+}
+
+.fantasy-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+  box-shadow: none;
+}
+
+.sidebar-full {
+  width: 100%;
+  margin-bottom: 0.65rem;
+}
+
+.block-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.block-placeholder {
+  margin: 0.5rem 0 0;
+  color: var(--text-muted);
+}
+
+.profile-save-message {
+  margin: 0.75rem 0 0;
+  color: var(--parchment);
+}
+
+.profile-save-message--error {
+  color: #e7a39a;
+}
+
+.entry-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.entry-list-item {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.entry-list-item__main {
+  min-width: 0;
+}
+
+.entry-link {
+  color: var(--parchment);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.entry-link:hover {
+  color: var(--accent-strong);
+}
+
+.entry-type-label {
+  color: var(--text-muted);
+  margin-left: 0.35rem;
+}
+
+.entry-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.entry-tags--view {
+  margin-top: 0.65rem;
+}
+
+.entry-tags--list {
+  margin-top: 0.1rem;
+}
+
+.entry-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.38rem 0.72rem;
+  border: 1px solid rgba(180, 135, 66, 0.24);
+  border-radius: 999px;
+  background: rgba(180, 135, 66, 0.14);
+  color: var(--parchment);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.entry-tag--removable,
+.entry-tag--suggestion {
+  cursor: pointer;
+  font: inherit;
+}
+
+.entry-tag--suggestion {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.entry-tag--suggestion:hover {
+  background: rgba(180, 135, 66, 0.18);
+  border-color: rgba(180, 135, 66, 0.32);
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0.85rem 0;
+  color: var(--text);
+}
+
+.checkbox-row input {
+  accent-color: var(--accent);
+}
+
+.home-profile__image,
+.party-card__avatar,
+.profile-preview__image {
+  object-fit: cover;
+  border: 1px solid rgba(203, 184, 146, 0.18);
+  background: #15120f;
+  flex-shrink: 0;
+}
+
+.home-profile__image--placeholder,
+.party-card__avatar--placeholder,
+.profile-preview__image--placeholder {
+  display: grid;
+  place-items: center;
+  color: #fff8ea;
+  font-weight: 700;
+  background:
+    radial-gradient(circle at top, rgba(255, 240, 204, 0.18), transparent 42%),
+    linear-gradient(180deg, #a47a38 0%, #7c5927 100%);
+}
+
+.home-profile__image {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+}
+
+.home-profile__image--placeholder {
+  font-size: 1.5rem;
+}
+
+.party-card__avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+}
+
+.party-card__avatar--placeholder {
+  font-size: 1.35rem;
+}
+
+.profile-preview__image {
+  width: 88px;
+  height: 88px;
+  border-radius: 18px;
+}
+
+.profile-preview__image--placeholder {
+  font-size: 1.8rem;
+}
