@@ -53,7 +53,7 @@ function CreateEntryPanel() {
           disabled={!canWriteActiveCampaign}
         >
           <option value="location">Location</option>
-          <option value="npc">NPC</option>
+          <option value="character">Character</option>
           <option value="faction">Faction</option>
           <option value="quest">Quest</option>
           <option value="note">Note</option>
