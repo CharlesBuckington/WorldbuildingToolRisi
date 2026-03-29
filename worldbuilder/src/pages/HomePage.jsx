@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import CreateEntryPanel from "../components/CreateEntryPanel.jsx";
 import { useWiki } from "../store/wikiStore.jsx";
 import { useAuth } from "../store/authStore.jsx";
 
 function HomePage() {
-  const { entries, createEntry } = useWiki();
+  const { entries } = useWiki();
   const {
     user,
     userProfile,
@@ -24,8 +25,6 @@ function HomePage() {
     updateCampaignMember,
   } = useAuth();
 
-  const [title, setTitle] = useState("");
-  const [type, setType] = useState("location");
   const [isCharacterPickerOpen, setIsCharacterPickerOpen] = useState(false);
   const [characterSearch, setCharacterSearch] = useState("");
   const [isCreateCampaignOpen, setIsCreateCampaignOpen] = useState(false);
@@ -44,7 +43,6 @@ function HomePage() {
   const [settingsState, setSettingsState] = useState("idle");
   const [settingsError, setSettingsError] = useState("");
   const [updatingMemberUid, setUpdatingMemberUid] = useState("");
-  const navigate = useNavigate();
 
   const entriesArray = useMemo(() => {
     return Object.values(entries).sort((a, b) => {
@@ -157,20 +155,6 @@ function HomePage() {
     setSettingsState("idle");
     setSettingsError("");
   }, [activeCampaign]);
-
-  const handleCreateEntry = async () => {
-    const trimmedTitle = title.trim();
-    if (!trimmedTitle) return;
-
-    const entry = await createEntry({
-      title: trimmedTitle,
-      type,
-      tags: [type],
-    });
-
-    setTitle("");
-    navigate(`/entry/${entry.id}`);
-  };
 
   const handleSelectCharacterEntry = async (entryId) => {
     await setPlayerCharacterEntry(activeCampaignId, entryId);
@@ -587,52 +571,7 @@ function HomePage() {
               </div>
             </section>
 
-            <section className="content-block home-card">
-              <p className="home-card__eyebrow">Create Entry</p>
-              <h3 className="home-card__title">Add something new</h3>
-              <p className="home-card__text">
-                {canWriteActiveCampaign
-                  ? "Create a new location, NPC, faction, quest, or note."
-                  : "You currently have read-only access, so campaign entries cannot be created from this account."}
-              </p>
-
-              <div className="block-edit-fields">
-                <label className="field-label">Title</label>
-                <input
-                  className="fantasy-input"
-                  type="text"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  placeholder="Neverwinter, Goblin Camp, Lord Harbin..."
-                  disabled={!canWriteActiveCampaign}
-                />
-
-                <label className="field-label">Type</label>
-                <select
-                  className="fantasy-input"
-                  value={type}
-                  onChange={(event) => setType(event.target.value)}
-                  disabled={!canWriteActiveCampaign}
-                >
-                  <option value="location">Location</option>
-                  <option value="npc">NPC</option>
-                  <option value="faction">Faction</option>
-                  <option value="quest">Quest</option>
-                  <option value="note">Note</option>
-                </select>
-              </div>
-
-              <div className="block-actions">
-                <button
-                  className="fantasy-button"
-                  type="button"
-                  onClick={handleCreateEntry}
-                  disabled={!canWriteActiveCampaign}
-                >
-                  Create Entry
-                </button>
-              </div>
-            </section>
+            <CreateEntryPanel />
           </div>
 
           {isAdmin && (

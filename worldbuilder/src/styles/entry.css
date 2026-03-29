@@ -94,6 +94,10 @@
   align-items: start;
 }
 
+.entry-layout--edit.entry-layout--sidebar-hidden {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .entry-sidebar {
   position: sticky;
   top: 6.2rem;
@@ -316,6 +320,8 @@
 .entry-edit-topbar {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.6rem;
   margin-bottom: 1rem;
 }
 

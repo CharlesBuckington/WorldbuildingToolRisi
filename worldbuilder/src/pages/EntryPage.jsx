@@ -180,7 +180,11 @@ function EntryPage() {
   };
 
 return (
-  <div className={`page entry-layout entry-layout--${resolvedMode}`}>
+  <div
+    className={`page entry-layout entry-layout--${resolvedMode} ${
+      resolvedMode === "edit" && !isSidebarOpen ? "entry-layout--sidebar-hidden" : ""
+    }`}
+  >
     {resolvedMode === "edit" && canEditCurrentEntry && isSidebarOpen && (
       <aside className="entry-sidebar is-open">
         <div className="entry-sidebar__section">
@@ -189,9 +193,9 @@ return (
           <button
             className="fantasy-button secondary sidebar-full"
             type="button"
-            onClick={() => setMode("view")}
+            onClick={() => setIsSidebarOpen(false)}
           >
-            Switch to View Mode
+            Hide Editor Sidebar
           </button>
         </div>
 
@@ -234,12 +238,22 @@ return (
           {resolvedMode === "edit" && canEditCurrentEntry ? (
             <>
               <div className="entry-edit-topbar">
+                {!isSidebarOpen && (
+                  <button
+                    className="fantasy-button secondary"
+                    type="button"
+                    onClick={() => setIsSidebarOpen(true)}
+                  >
+                    Show Editor Sidebar
+                  </button>
+                )}
+
                 <button
                   className="fantasy-button secondary"
                   type="button"
-                  onClick={() => setIsSidebarOpen((prev) => !prev)}
+                  onClick={() => setMode("view")}
                 >
-                  {isSidebarOpen ? "Hide Editor Sidebar" : "Show Editor Sidebar"}
+                  View Mode
                 </button>
               </div>
 
