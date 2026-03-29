@@ -12,6 +12,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import { useWiki } from "../store/wikiStore.jsx";
+import { resolveImageSource } from "../utils/media.js";
 
 const ICON_OPTIONS = [
   { value: "default", label: "Default Marker" },
@@ -193,9 +194,10 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
   const [editingMarker, setEditingMarker] = useState(null);
 
   const entriesArray = useMemo(() => Object.values(entries), [entries]);
+  const imageSource = resolveImageSource(block.imageFilename);
 
   useEffect(() => {
-    if (!block.imageFilename || (block.width && block.height)) {
+    if (!imageSource || (block.width && block.height)) {
       return;
     }
 
@@ -209,8 +211,8 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
     img.onerror = () => {
       console.error("Failed to load map image:", block.imageFilename);
     };
-    img.src = `/Img/${block.imageFilename}`;
-  }, [block.id, block.imageFilename, block.width, block.height, updateBlock]);
+    img.src = imageSource;
+  }, [block.id, block.imageFilename, block.width, block.height, imageSource, updateBlock]);
 
   // Fullscreen
   useEffect(() => {
@@ -506,12 +508,12 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
     <section className="content-block map-block">
       {mode === "edit" && (
         <div className="block-edit-fields">
-          <label className="field-label">Map image filename</label>
+          <label className="field-label">Map image source</label>
           <input
             className="fantasy-input"
             value={block.imageFilename || ""}
             onChange={(e) => updateBlock(block.id, { imageFilename: e.target.value })}
-            placeholder="Map image filename in public/Img"
+            placeholder="Filename in public/Img or https://example.com/map.jpg"
           />
 
           <label className="field-label">Caption</label>
@@ -526,7 +528,7 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
 
       {!block.imageFilename && mode === "edit" && (
         <p className="block-placeholder">
-          Enter an image filename to use this as a map block.
+          Enter an image filename or URL to use this as a map block.
         </p>
       )}
 
@@ -576,7 +578,7 @@ function MapBlock({ block, mode, markers, onDelete, canMoveUp, canMoveDown, onMo
               <MapResizeHandler trigger={isFullscreen} />
               <MapScrollZoomGuard bounds={L.latLngBounds(bounds)} />
 
-              <ImageOverlay url={`/Img/${block.imageFilename}`} bounds={bounds} />
+              <ImageOverlay url={imageSource} bounds={bounds} />
 
               <MapClickHandler
                 imageWidth={block.width}

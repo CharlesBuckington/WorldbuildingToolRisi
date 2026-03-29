@@ -1,22 +1,24 @@
 // src/components/ImageBlock.jsx
 import { useWiki } from "../store/wikiStore.jsx";
+import { resolveImageSource } from "../utils/media.js";
 
 function ImageBlock({ block, mode, onDelete, canMoveUp, canMoveDown, onMoveUp, onMoveDown }) {
   const { updateBlock } = useWiki();
+  const imageSource = resolveImageSource(block.imageFilename);
 
   return (
     <section className="content-block image-block">
       {mode === "edit" ? (
         <>
           <div className="block-edit-fields">
-            <label className="field-label">Image filename</label>
+            <label className="field-label">Image source</label>
             <input
               className="fantasy-input"
               value={block.imageFilename || ""}
               onChange={(e) =>
                 updateBlock(block.id, { imageFilename: e.target.value })
               }
-              placeholder="Image filename in public/Img"
+              placeholder="Filename in public/Img or https://example.com/image.jpg"
             />
 
             <label className="field-label">Caption</label>
@@ -28,17 +30,17 @@ function ImageBlock({ block, mode, onDelete, canMoveUp, canMoveDown, onMoveUp, o
             />
           </div>
 
-          {block.imageFilename ? (
+          {imageSource ? (
             <div className="image-block__preview">
               <img
-                src={`/Img/${block.imageFilename}`}
+                src={imageSource}
                 alt={block.caption || ""}
                 className="image-block__img"
               />
             </div>
           ) : (
             <p className="block-placeholder">
-              Add an image filename to display the image here.
+              Add an image filename or URL to display the image here.
             </p>
           )}
 
@@ -68,10 +70,10 @@ function ImageBlock({ block, mode, onDelete, canMoveUp, canMoveDown, onMoveUp, o
         </>
       ) : (
         <>
-          {block.imageFilename && (
+          {imageSource && (
             <div className="image-block__preview">
               <img
-                src={`/Img/${block.imageFilename}`}
+                src={imageSource}
                 alt={block.caption || ""}
                 className="image-block__img"
               />
